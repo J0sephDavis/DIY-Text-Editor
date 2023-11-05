@@ -3,6 +3,7 @@
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/ioctl.h>
 #include <termios.h>
 #include <unistd.h>
 /*** defines ***/
@@ -10,6 +11,8 @@
 
 /*** data ***/
 struct editorConfig { 				//global struct that will contain our editor state
+	int screenrows; 			//count of rows on screen
+	int screencols; 			//count of columns on screen
 	struct termios original_termios; 	//the original state of the user's termio
 } E;
 
@@ -74,6 +77,20 @@ char editorReadKey() {
 	}	
 	return c;
 }
+
+int getWindowSize(int *rows, int *cols) {
+	struct winsize ws;
+	if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) == -1 || ws.ws_col == 0) { //if ioctl fails, or it fails without letting us know
+		return -1; 	//return a failure
+	}
+	else {
+		*cols = ws.ws_col; 	//set the columns to the pointed value
+		*rows = ws.ws_row; 	//set the rows to the pointed value
+		return 0; 	//return success
+	}
+	//
+}
+
 /*** output ***/
 //draw a tilde at the beginning of each line
 void editorDrawRows() {
@@ -107,8 +124,14 @@ void editorProcessKeypress() {
 }
 
 /*** init ***/
+void initEditor() {
+	if (getWindowSize(&E.screenrows, &E.screencols) == -1)
+		die("getWindowSize");
+}
+
 int main() {
 	enableRawMode();
+	initEditor();
 	while (1) {
 		editorRefreshScreen();
 		editorProcessKeypress();
