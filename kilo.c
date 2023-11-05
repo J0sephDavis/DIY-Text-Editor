@@ -77,26 +77,27 @@ char editorReadKey() {
 	while ((nread = read(STDIN_FILENO, &c, 1)) == -1){ //if read == -1 it indicates a failure, on some systems it will return -1 & flag EAGAIN on timeout
 		if (nread == -1 && errno != EAGAIN)
 			die("read");
-	}	
-
-	if (c== '\x1b') { //if we read an escape character
-		char seq[3];
-		//if the read values return after a time-out, assume user simply pressed escape and return that
-		if (read(STDIN_FILENO, &seq[0], 1) != 1) return '\x1b';
-		if (read(STDIN_FILENO, &seq[1], 1) != 1) return '\x1b';
-		if (seq[0] == '[') {
-			//mapping arrow-keys to the movement-keys
-			switch (seq[1]) {
+	}
+	if (c == '\x1b') {
+		//if I create a char array for the sequence of escapes, we end up with w,a,s,d repeating their inputs infinitely until another character is pressed
+		//I search arouned & I am honestly unsure why this problem occurs, but simply adding char a[3] will cause this 'hanging' or 'reptition' where the cursor
+		//slowly drifts across the screen
+		char seq0;
+		char seq1;
+		//
+		if(read(STDIN_FILENO, &seq0, 1) != 1) return '\x1b';
+		if(read(STDIN_FILENO, &seq1, 1) != 1) return '\x1b';
+		if (seq0 == '[') {
+			switch (seq1) {
 				case 'A': return 'w';
 				case 'B': return 's';
 				case 'C': return 'd';
 				case 'D': return 'a';
 			}
 		}
-		return '\x1b'; 	//if we haven't handled their sequence, assume they just pressed escape
+		//if the escape sequence wasn't able to be hanlded, it just returns escape (\x1b) at the end
 	}
-	else
-		return c;
+	return c;
 }
 
 int getCursorPosition(int *rows, int *cols) {
@@ -228,6 +229,7 @@ void editorProcessKeypress() {
 			write(STDOUT_FILENO, "\x1b[H", 3); 	//move the cursor to the 1st row & 1st column
 			exit(0);
 			break;
+		//cursor movement
 		case 'w':
 		case 'a':
 		case 's':
