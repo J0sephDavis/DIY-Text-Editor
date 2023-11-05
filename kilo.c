@@ -146,6 +146,9 @@ void editorDrawRows(struct abuf *ab) {
 //refresh the screen
 void editorRefreshScreen() {
 	struct abuf ab = ABUF_INIT;
+	abAppend(&ab,"\x1b[?25l",6);
+		//l 	| reset mode
+		//?25 	| not in the usually associated vt100 documents; however, it should hide the cursor
 	abAppend(&ab,"\x1b[2J",4); 	//clear the entire screen
 		//2 	| argument of J, indicates we clear the entire screen
 		//J 	| "Erase In Display" (https://vt100.net/docs/vt100-ug/chapter3.html#ED)
@@ -153,6 +156,9 @@ void editorRefreshScreen() {
 		//H - "Cursor Position" (https://vt100.net/docs/vt100-ug/chapter3.html#CUP)
 	editorDrawRows(&ab);
 	abAppend(&ab, "\x1b[H",3); 	//move cursor to beginning(top-left)
+	abAppend(&ab,"\x1b[?25h",6);
+		//h 	| set mode
+		//?25l, see above, this should show the cursor?
 	
 	write(STDOUT_FILENO, ab.b, ab.len);
 	abFree(&ab);
