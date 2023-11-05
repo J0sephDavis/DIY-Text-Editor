@@ -15,7 +15,11 @@ void enableRawMode() {
 	atexit(disableRawMode); 			//ensures that disableRawMode() is called on application exit()
 
 	struct termios raw = original_termios; 		//struct that holds the termio setup for raw input
-	raw.c_lflag &= ~(ECHO | ICANON | ISIG); 	//disable ECHOing, canonical mode(user-input sending on enter), & signal interrupts (ctrl-Z/C)
+	raw.c_lflag &= ~(ECHO | ICANON | ISIG | IEXTEN); 	//disable the following features
+		//ECHO - user-input echoing back to terminal
+		//ICANON - canonical mode, all user-input is only given to the program on pressing ENTER
+		//ISIG - signal interrupts such as CTRL-Z/C
+		//IEXTEN - CTRL-V, which is used to print the actual values of things such as CTRL-Q (3)
 	raw.c_iflag &= ~(IXON); 			//disable software flow control, CTRL-S/Q
 	tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw); 	//sets the state of the FD to the new struct we've created
 						  	//TCSAFLUSH - only applies changes after all pending output is written, discards unread input
