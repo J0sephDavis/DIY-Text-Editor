@@ -16,7 +16,7 @@ void enableRawMode() {
 
 	struct termios raw = original_termios; 		//struct that holds the termio setup for raw input
 	//c_lflag is the "local flag"
-	raw.c_lflag &= ~(ECHO | ICANON); 		//disable ECHOing & canonical mode(user-input sending on enter)
+	raw.c_lflag &= ~(ECHO | ICANON | ISIG); 	//disable ECHOing, canonical mode(user-input sending on enter), & signal interrupts (ctrl-Z/C)
 	tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw); 	//sets the state of the FD to the new struct we've created
 						  	//TCSAFLUSH - only applies changes after all pending output is written, discards unread input
 }
