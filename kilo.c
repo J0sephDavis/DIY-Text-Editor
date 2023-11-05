@@ -10,7 +10,12 @@
 /*** defines ***/
 #define KILO_VERSION "0.0.1"
 #define CTRL_KEY(k) ((k) & 0x1f)
-
+enum editorKey {
+	ARROW_LEFT 	= 'a',
+	ARROW_RIGHT 	= 'd',
+	ARROW_DOWN 	= 's',
+	ARROW_UP 	= 'w'
+};
 /*** data ***/
 struct editorConfig { 				//global struct that will contain our editor state
 	int cx,cy; 				//cursor x & y positions, 0,0 == top-left
@@ -89,10 +94,10 @@ char editorReadKey() {
 		if(read(STDIN_FILENO, &seq1, 1) != 1) return '\x1b';
 		if (seq0 == '[') {
 			switch (seq1) {
-				case 'A': return 'w';
-				case 'B': return 's';
-				case 'C': return 'd';
-				case 'D': return 'a';
+				case 'A': return ARROW_UP;
+				case 'B': return ARROW_DOWN;
+				case 'C': return ARROW_RIGHT;
+				case 'D': return ARROW_LEFT;
 			}
 		}
 		//if the escape sequence wasn't able to be hanlded, it just returns escape (\x1b) at the end
@@ -206,16 +211,16 @@ void editorRefreshScreen() {
 /*** input ***/
 void editorMoveCursor(char key) {
 	switch(key) {
-		case 'a':
+		case ARROW_LEFT:
 			E.cx--;
 			break;
-		case 'd':
+		case ARROW_RIGHT:
 			E.cx++;
 			break;
-		case 'w':
+		case ARROW_UP:
 			E.cy--;
 			break;
-		case 's':
+		case ARROW_DOWN:
 			E.cy++;
 			break;
 	}
@@ -230,10 +235,10 @@ void editorProcessKeypress() {
 			exit(0);
 			break;
 		//cursor movement
-		case 'w':
-		case 'a':
-		case 's':
-		case 'd':
+		case ARROW_UP:
+		case ARROW_DOWN:
+		case ARROW_LEFT:
+		case ARROW_RIGHT:
 			editorMoveCursor(c);
 			break;
 	}
