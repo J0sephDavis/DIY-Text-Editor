@@ -72,12 +72,22 @@ char editorReadKey() {
 	return c;
 }
 /*** output ***/
+//draw a tilde at the beginning of each line
+void editorDrawRows() {
+	int y;
+	for (y = 0; y < 24; y++) {
+		write(STDOUT_FILENO, "~\r\n", 3);
+	}
+}
+//refresh the screen
 void editorRefreshScreen() {
 	write(STDOUT_FILENO, "\x1b[2J",4); 	//clear the entire screen
 		//2 	| argument of J, indicates we clear the entire screen
 		//J 	| "Erase In Display" (https://vt100.net/docs/vt100-ug/chapter3.html#ED)
 	write(STDOUT_FILENO, "\x1b[H", 3); 	//move the cursor to the 1st row & 1st column
 		//H - "Cursor Position" (https://vt100.net/docs/vt100-ug/chapter3.html#CUP)
+	editorDrawRows();
+	write(STDOUT_FILENO, "\x1b[H",3); 	//move cursor to beginning(top-left)
 }
 
 /*** input ***/
