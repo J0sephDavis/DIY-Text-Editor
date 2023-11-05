@@ -78,10 +78,30 @@ char editorReadKey() {
 	return c;
 }
 
+int getCursorPosition(int *rows, int *cols) {
+	char buf[32];
+	unsigned int i = 0;
+	//
+	if (write(STDOUT_FILENO, "\x1b[6n",4) != 4) return -1;
+	//
+	while (i < sizeof(buf) - 1) {
+		if (read(STDIN_FILENO, &buf[i], 1) != 1) break;
+		if (buf[i] == 'R') break; 	//after calling n(6), we expect to receive a Cursor Position Report,ends with R (https://vt100.net/docs/vt100-ug/chapter3.html#CPR)
+		i++;
+	}
+	buf[i] = '\0'; 	//terminate string
+	if (buf[0] != '\x1b' || buf[1] != '[') return -1; //if the buffer doesn't contain the CPR, return a failure
+	if (sscanf(&buf[2], "%d;%d", rows,cols) != 2) return -1; // if scanf doesnt read the two positions of the CPR, return a failure
+	return 0; 	//return success
+}
+
 int getWindowSize(int *rows, int *cols) {
 	struct winsize ws;
 	if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) == -1 || ws.ws_col == 0) { //if ioctl fails, or it fails without letting us know
-		return -1; 	//return a failure
+		//fallback for getting window size
+		if (write(STDOUT_FILENO, "\x1b[999C\x1b[999B", 12) != 12)
+			return -1; 			//return a failure
+		return getCursorPosition(rows,cols); 	//returns the fallback attempt of getting rows & cols
 	}
 	else {
 		*cols = ws.ws_col; 	//set the columns to the pointed value
@@ -96,7 +116,9 @@ int getWindowSize(int *rows, int *cols) {
 void editorDrawRows() {
 	int y;
 	for (y = 0; y < E.screenrows; y++) {
-		write(STDOUT_FILENO, "~\r\n", 3);
+		write(STDOUT_FILENO, "~", 1);
+		if (y < E.screenrows - 1)
+			write(STDOUT_FILENO, "\r\n", 2);
 	}
 }
 //refresh the screen
