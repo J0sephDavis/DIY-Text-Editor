@@ -15,16 +15,26 @@ void enableRawMode() {
 	atexit(disableRawMode); 				//ensures that disableRawMode() is called on application exit()
 
 	struct termios raw = original_termios; 			//struct that holds the termio setup for raw input
+
 	raw.c_lflag &= ~(ECHO | ICANON | ISIG | IEXTEN); 	//disable the following features
 		//ECHO - user-input echoing back to terminal
 		//ICANON - canonical mode, all user-input is only given to the program on pressing ENTER
 		//ISIG - signal interrupts such as CTRL-Z/C
 		//IEXTEN - CTRL-V, which is used to print the actual values of things such as CTRL-Q (3)
-	raw.c_iflag &= ~(ICRNL | IXON); 			//disable the following features
-		//IXON - software flow control, CTRL-S/Q
-		//ICRNL - terminal changes all carriage-returns to new lines (CTRL-M = '/r', but with it enabled it becomes ENTER = '\n')
-	raw.c_oflag &= ~(OPOST); 			//disable the following features
+
+	raw.c_iflag &= ~(BRKINT | ICRNL | INPCK | ISTRIP | IXON);	//disable the following features
+		//BRKINT 	- break-conditions send CTRL-C to program
+		//ICRNL 	- terminal changes all carriage-returns to new lines (CTRL-M = '/r', but with it enabled it becomes ENTER = '\n')
+		//INPCK 	- parity checking
+		//ISTRIP 	- sets the 8th bit of each byte to 0
+		//IXON 		- software flow control, CTRL-S/Q
+
+	raw.c_oflag &= ~(OPOST); 				//disable the following features
 		//OPOST - output processing
+
+	raw.c_cflag |= ~(CS8); 					//disable the following features
+		//CS8 		- a bit mask that sets the systems character size to 8bits
+	
 	tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw); 		//sets the state of the FD to the new struct we've created
 		//TCSAFLUSH - only applies changes after all pending output is written, discards unread input
 }
