@@ -68,6 +68,15 @@ char editorReadKey() {
 	}	
 	return c;
 }
+/*** output ***/
+void editorRefreshScreen() {
+	//4-> 4 bytes written to terminal
+	// 	[0] - \x1b	| the escape sequence for the terminal
+	// 	[1] - [  	| part of the esc sequence
+	// 	[2] - 2 	| argument of J, indicates we clear the entire screen
+	// 	[3] - J 	| "Erase In Display" (https://vt100.net/docs/vt100-ug/chapter3.html#ED)
+	write(STDOUT_FILENO, "\x1b[2J",4);
+}
 
 /*** input ***/
 void editorProcessKeypress() {
@@ -84,6 +93,7 @@ void editorProcessKeypress() {
 int main() {
 	enableRawMode();
 	while (1) {
+		editorRefreshScreen();
 		editorProcessKeypress();
 	}
 	return 0;
