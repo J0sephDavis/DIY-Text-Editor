@@ -139,6 +139,8 @@ void editorDrawRows(struct abuf *ab) {
 	int y;
 	for (y = 0; y < E.screenrows; y++) {
 		abAppend(ab, "~",1);
+
+		abAppend(ab, "\x1b[K",3); 	// K = Erase in line
 		if (y < E.screenrows - 1)
 			abAppend(ab, "\r\n", 2);
 	}
@@ -149,9 +151,6 @@ void editorRefreshScreen() {
 	abAppend(&ab,"\x1b[?25l",6);
 		//l 	| reset mode
 		//?25 	| not in the usually associated vt100 documents; however, it should hide the cursor
-	abAppend(&ab,"\x1b[2J",4); 	//clear the entire screen
-		//2 	| argument of J, indicates we clear the entire screen
-		//J 	| "Erase In Display" (https://vt100.net/docs/vt100-ug/chapter3.html#ED)
 	abAppend(&ab, "\x1b[H", 3); 	//move the cursor to the 1st row & 1st column
 		//H - "Cursor Position" (https://vt100.net/docs/vt100-ug/chapter3.html#CUP)
 	editorDrawRows(&ab);
