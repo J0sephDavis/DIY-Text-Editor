@@ -34,6 +34,9 @@ void enableRawMode() {
 
 	raw.c_cflag |= ~(CS8); 					//disable the following features
 		//CS8 		- a bit mask that sets the systems character size to 8bits
+
+	raw.c_cc[VMIN] = 0; 					//minimum number of bytes needed before read()
+	raw.c_cc[VTIME] = 1; 					//maximum amount of time to wait before read() returns, in 10ths of a second. read() returns 0 after timeout
 	
 	tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw); 		//sets the state of the FD to the new struct we've created
 		//TCSAFLUSH - only applies changes after all pending output is written, discards unread input
@@ -41,12 +44,14 @@ void enableRawMode() {
 
 int main() {
 	enableRawMode();
-	char c;
-	while (read(STDIN_FILENO, &c, 1) == 1 && c != 'q') {
+	while (1) {
+		char c = '\0';
+		read(STDIN_FILENO, &c, 1);
 		if (iscntrl(c)) 		//tests whether the character is a ctrl character or not. i.e, if it is a non-printable character
 			printf("%d\r\n", c);
 		else
 			printf("%d ('%c')\r\n",c,c);
-	};
+		if (c == 'q') break;
+	}
 	return 0;
 }
