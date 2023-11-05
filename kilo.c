@@ -1,4 +1,5 @@
 #include <ctype.h>
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <termios.h>
@@ -6,12 +7,22 @@
 
 struct termios original_termios; //the original state of the user's termio
 
-void disableRawMode() {
-	tcsetattr(STDIN_FILENO, TCSAFLUSH, &original_termios); //sets the users termio back to how it was
+//prints error message & exits program
+void die(const char *s) {
+	perror(s); 	//prints out the string 's' & then outputs the global err no + description
+	exit(1); 	//exit != 0 indicates failure
 }
 
+//disable raw mode & restores the termio
+void disableRawMode() {
+	if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &original_termios) == -1) //sets the users termio back to how it was
+		die("tcsetattr");
+}
+
+//enables raw mode
 void enableRawMode() {
-	tcgetattr(STDIN_FILENO, &original_termios); 		//get the origin termios & save it
+	if (tcgetattr(STDIN_FILENO, &original_termios)) 	//get the origin termios & save it
+		die("tgetattr");
 	atexit(disableRawMode); 				//ensures that disableRawMode() is called on application exit()
 
 	struct termios raw = original_termios; 			//struct that holds the termio setup for raw input
@@ -38,7 +49,8 @@ void enableRawMode() {
 	raw.c_cc[VMIN] = 0; 					//minimum number of bytes needed before read()
 	raw.c_cc[VTIME] = 1; 					//maximum amount of time to wait before read() returns, in 10ths of a second. read() returns 0 after timeout
 	
-	tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw); 		//sets the state of the FD to the new struct we've created
+	if(tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw)) 		//sets the state of the FD to the new struct we've created
+		die("tsetattr");
 		//TCSAFLUSH - only applies changes after all pending output is written, discards unread input
 }
 
@@ -46,7 +58,8 @@ int main() {
 	enableRawMode();
 	while (1) {
 		char c = '\0';
-		read(STDIN_FILENO, &c, 1);
+		if (read(STDIN_FILENO, &c, 1) == -1 && errno != EAGAIN) //if read == -1 it indicates a failure, on some systems it will return -1 & flag EAGAIN on timeout
+			die("read");
 		if (iscntrl(c)) 		//tests whether the character is a ctrl character or not. i.e, if it is a non-printable character
 			printf("%d\r\n", c);
 		else
