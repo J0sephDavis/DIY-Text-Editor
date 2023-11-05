@@ -14,6 +14,9 @@ struct termios original_termios; //the original state of the user's termio
 /*** terminal  ***/
 //prints error message & exits program
 void die(const char *s) {
+	write(STDOUT_FILENO, "\x1b[2J",4); 	//clear the entire screen
+	write(STDOUT_FILENO, "\x1b[H", 3); 	//move the cursor to the 1st row & 1st column
+
 	perror(s); 	//prints out the string 's' & then outputs the global err no + description
 	exit(1); 	//exit != 0 indicates failure
 }
@@ -83,6 +86,8 @@ void editorProcessKeypress() {
 
 	switch(c) {
 		case CTRL_KEY('q'):
+			write(STDOUT_FILENO, "\x1b[2J",4); 	//clear the entire screen
+			write(STDOUT_FILENO, "\x1b[H", 3); 	//move the cursor to the 1st row & 1st column
 			exit(0);
 			break;
 	}
