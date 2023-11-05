@@ -13,6 +13,7 @@
 
 /*** data ***/
 struct editorConfig { 				//global struct that will contain our editor state
+	int cx,cy; 				//cursor x & y positions
 	int screenrows; 			//count of rows on screen
 	int screencols; 			//count of columns on screen
 	struct termios original_termios; 	//the original state of the user's termio
@@ -194,6 +195,8 @@ void editorProcessKeypress() {
 
 /*** init ***/
 void initEditor() {
+	E.cx = 0; 	//init cursor x position
+	E.cy = 0; 	//init cursor y position
 	if (getWindowSize(&E.screenrows, &E.screencols) == -1)
 		die("getWindowSize");
 }
