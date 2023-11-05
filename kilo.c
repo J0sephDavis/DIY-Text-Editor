@@ -11,10 +11,10 @@
 #define KILO_VERSION "0.0.1"
 #define CTRL_KEY(k) ((k) & 0x1f)
 enum editorKey {
-	ARROW_LEFT 	= 'a',
-	ARROW_RIGHT 	= 'd',
-	ARROW_DOWN 	= 's',
-	ARROW_UP 	= 'w'
+	ARROW_LEFT 	= 1000,
+	ARROW_RIGHT 	,
+	ARROW_DOWN 	,
+	ARROW_UP 	,
 };
 /*** data ***/
 struct editorConfig { 				//global struct that will contain our editor state
@@ -76,7 +76,7 @@ void enableRawMode() {
 		//TCSAFLUSH - only applies changes after all pending output is written, discards unread input
 }
 
-char editorReadKey() {
+int editorReadKey() {
 	int nread;
 	char c;
 	while ((nread = read(STDIN_FILENO, &c, 1)) == -1){ //if read == -1 it indicates a failure, on some systems it will return -1 & flag EAGAIN on timeout
@@ -209,7 +209,7 @@ void editorRefreshScreen() {
 }
 
 /*** input ***/
-void editorMoveCursor(char key) {
+void editorMoveCursor(int key) {
 	switch(key) {
 		case ARROW_LEFT:
 			E.cx--;
@@ -226,7 +226,7 @@ void editorMoveCursor(char key) {
 	}
 }
 void editorProcessKeypress() {
-	char c = editorReadKey();
+	int c = editorReadKey();
 
 	switch(c) {
 		case CTRL_KEY('q'):
