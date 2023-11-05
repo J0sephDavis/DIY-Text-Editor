@@ -9,7 +9,9 @@
 #define CTRL_KEY(k) ((k) & 0x1f)
 
 /*** data ***/
-struct termios original_termios; //the original state of the user's termio
+struct editorConfig { 				//global struct that will contain our editor state
+	struct termios original_termios; 	//the original state of the user's termio
+} E;
 
 /*** terminal  ***/
 //prints error message & exits program
@@ -23,17 +25,18 @@ void die(const char *s) {
 
 //disable raw mode & restores the termio
 void disableRawMode() {
-	if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &original_termios) == -1) //sets the users termio back to how it was
+
+	if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &E.original_termios) == -1) //sets the users termio back to how it was
 		die("tcsetattr");
 }
 
 //enables raw mode
 void enableRawMode() {
-	if (tcgetattr(STDIN_FILENO, &original_termios)) 	//get the origin termios & save it
+	if (tcgetattr(STDIN_FILENO, &E.original_termios)) 	//get the origin termios & save it
 		die("tgetattr");
 	atexit(disableRawMode); 				//ensures that disableRawMode() is called on application exit()
 
-	struct termios raw = original_termios; 			//struct that holds the termio setup for raw input
+	struct termios raw = E.original_termios; 			//struct that holds the termio setup for raw input
 
 	raw.c_lflag &= ~(ECHO | ICANON | ISIG | IEXTEN); 	//disable the following features
 		//ECHO - user-input echoing back to terminal
