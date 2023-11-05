@@ -13,8 +13,11 @@
 enum editorKey {
 	ARROW_LEFT 	= 1000,
 	ARROW_RIGHT 	,
-	ARROW_DOWN 	,
 	ARROW_UP 	,
+	ARROW_DOWN 	,
+	//
+	PAGE_UP 	,
+	PAGE_DOWN 	,
 };
 /*** data ***/
 struct editorConfig { 				//global struct that will contain our editor state
@@ -89,15 +92,27 @@ int editorReadKey() {
 		//slowly drifts across the screen
 		char seq0;
 		char seq1;
-		//
-		if(read(STDIN_FILENO, &seq0, 1) != 1) return '\x1b';
-		if(read(STDIN_FILENO, &seq1, 1) != 1) return '\x1b';
+		char seq2;
+		//get the next values in the sequence
+		if(read(STDIN_FILENO, &seq0, 1) != 1) return c;
+		if(read(STDIN_FILENO, &seq1, 1) != 1) return c;
+		
 		if (seq0 == '[') {
-			switch (seq1) {
-				case 'A': return ARROW_UP;
-				case 'B': return ARROW_DOWN;
-				case 'C': return ARROW_RIGHT;
-				case 'D': return ARROW_LEFT;
+			if (seq1 >= '0' && seq1 <= '9') {
+				if (read(STDIN_FILENO,&seq2, 1) != 1) return c;
+				if (seq2 == '~')
+					switch (seq1) {
+						case '5': return PAGE_UP;
+						case '6': return PAGE_DOWN;
+					}
+			}
+			else {
+				switch (seq1) {
+					case 'A': return ARROW_UP;
+					case 'B': return ARROW_DOWN;
+					case 'C': return ARROW_RIGHT;
+					case 'D': return ARROW_LEFT;
+				}
 			}
 		}
 		//if the escape sequence wasn't able to be hanlded, it just returns escape (\x1b) at the end
