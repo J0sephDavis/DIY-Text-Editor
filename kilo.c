@@ -78,7 +78,25 @@ char editorReadKey() {
 		if (nread == -1 && errno != EAGAIN)
 			die("read");
 	}	
-	return c;
+
+	if (c== '\x1b') { //if we read an escape character
+		char seq[3];
+		//if the read values return after a time-out, assume user simply pressed escape and return that
+		if (read(STDIN_FILENO, &seq[0], 1) != 1) return '\x1b';
+		if (read(STDIN_FILENO, &seq[1], 1) != 1) return '\x1b';
+		if (seq[0] == '[') {
+			//mapping arrow-keys to the movement-keys
+			switch (seq[1]) {
+				case 'A': return 'w';
+				case 'B': return 's';
+				case 'C': return 'd';
+				case 'D': return 'a';
+			}
+		}
+		return '\x1b'; 	//if we haven't handled their sequence, assume they just pressed escape
+	}
+	else
+		return c;
 }
 
 int getCursorPosition(int *rows, int *cols) {
