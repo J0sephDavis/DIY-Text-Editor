@@ -1,3 +1,4 @@
+/*** includes ***/
 #include <ctype.h>
 #include <errno.h>
 #include <stdio.h>
@@ -5,8 +6,10 @@
 #include <termios.h>
 #include <unistd.h>
 
+/*** data ***/
 struct termios original_termios; //the original state of the user's termio
 
+/*** terminal  ***/
 //prints error message & exits program
 void die(const char *s) {
 	perror(s); 	//prints out the string 's' & then outputs the global err no + description
@@ -53,7 +56,7 @@ void enableRawMode() {
 		die("tsetattr");
 		//TCSAFLUSH - only applies changes after all pending output is written, discards unread input
 }
-
+/*** init ***/
 int main() {
 	enableRawMode();
 	while (1) {
