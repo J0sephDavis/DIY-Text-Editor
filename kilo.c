@@ -70,12 +70,11 @@ char editorReadKey() {
 }
 /*** output ***/
 void editorRefreshScreen() {
-	//4-> 4 bytes written to terminal
-	// 	[0] - \x1b	| the escape sequence for the terminal
-	// 	[1] - [  	| part of the esc sequence
-	// 	[2] - 2 	| argument of J, indicates we clear the entire screen
-	// 	[3] - J 	| "Erase In Display" (https://vt100.net/docs/vt100-ug/chapter3.html#ED)
-	write(STDOUT_FILENO, "\x1b[2J",4);
+	write(STDOUT_FILENO, "\x1b[2J",4); 	//clear the entire screen
+		//2 	| argument of J, indicates we clear the entire screen
+		//J 	| "Erase In Display" (https://vt100.net/docs/vt100-ug/chapter3.html#ED)
+	write(STDOUT_FILENO, "\x1b[H", 3); 	//move the cursor to the 1st row & 1st column
+		//H - "Cursor Position" (https://vt100.net/docs/vt100-ug/chapter3.html#CUP)
 }
 
 /*** input ***/
