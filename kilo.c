@@ -23,6 +23,8 @@ void enableRawMode() {
 	raw.c_iflag &= ~(ICRNL | IXON); 			//disable the following features
 		//IXON - software flow control, CTRL-S/Q
 		//ICRNL - terminal changes all carriage-returns to new lines (CTRL-M = '/r', but with it enabled it becomes ENTER = '\n')
+	raw.c_oflag &= ~(OPOST); 			//disable the following features
+		//OPOST - output processing
 	tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw); 		//sets the state of the FD to the new struct we've created
 		//TCSAFLUSH - only applies changes after all pending output is written, discards unread input
 }
@@ -32,9 +34,9 @@ int main() {
 	char c;
 	while (read(STDIN_FILENO, &c, 1) == 1 && c != 'q') {
 		if (iscntrl(c)) 		//tests whether the character is a ctrl character or not. i.e, if it is a non-printable character
-			printf("%d\n", c);
+			printf("%d\r\n", c);
 		else
-			printf("%d ('%c')\n",c,c);
+			printf("%d ('%c')\r\n",c,c);
 	};
 	return 0;
 }
