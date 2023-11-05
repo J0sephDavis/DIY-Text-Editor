@@ -18,6 +18,16 @@ void die(const char *s) {
 	exit(1); 	//exit != 0 indicates failure
 }
 
+char editorReadKey() {
+	int nread;
+	char c;
+	while ((nread = read(STDIN_FILENO, &c, 1)) == -1){ //if read == -1 it indicates a failure, on some systems it will return -1 & flag EAGAIN on timeout
+		if (nread == -1 && errno != EAGAIN)
+			die("read");
+	}	
+	return c;
+}
+
 //disable raw mode & restores the termio
 void disableRawMode() {
 	if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &original_termios) == -1) //sets the users termio back to how it was
@@ -58,18 +68,23 @@ void enableRawMode() {
 		die("tsetattr");
 		//TCSAFLUSH - only applies changes after all pending output is written, discards unread input
 }
+
+/*** input ***/
+void editorProcessKeypress() {
+	char c = editorReadKey();
+
+	switch(c) {
+		case CTRL_KEY('q'):
+			exit(0);
+			break;
+	}
+}
+
 /*** init ***/
 int main() {
 	enableRawMode();
 	while (1) {
-		char c = '\0';
-		if (read(STDIN_FILENO, &c, 1) == -1 && errno != EAGAIN) //if read == -1 it indicates a failure, on some systems it will return -1 & flag EAGAIN on timeout
-			die("read");
-		if (iscntrl(c)) 		//tests whether the character is a ctrl character or not. i.e, if it is a non-printable character
-			printf("%d\r\n", c);
-		else
-			printf("%d ('%c')\r\n",c,c);
-		if (c == CTRL_KEY('q')) break;
+		editorProcessKeypress();
 	}
 	return 0;
 }
