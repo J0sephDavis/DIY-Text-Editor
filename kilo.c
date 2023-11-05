@@ -3,6 +3,7 @@
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sys/ioctl.h>
 #include <termios.h>
 #include <unistd.h>
@@ -110,26 +111,51 @@ int getWindowSize(int *rows, int *cols) {
 	}
 	//
 }
+/*** append buffer ***/
+/* To reduce the amount of write() calls we make. Thus, reducing flicker & unexpected behavior */
+struct abuf { 		//the append buffer
+	char *b; 	//pointer to buffer
+	int len; 	//length of buffer
+};
+#define ABUF_INIT {NULL, 0}
+
+//append string s to buffer
+void abAppend(struct abuf *ab, const char *s, int len) {
+	char *new = realloc(ab->b, ab->len + len);
+
+	if (new == NULL) return;
+	memcpy(&new[ab->len],s, len);
+	ab->b  = new;
+	ab->len += len;
+}
+
+void abFree(struct abuf *ab) {
+	free(ab->b);
+}
 
 /*** output ***/
 //draw a tilde at the beginning of each line
-void editorDrawRows() {
+void editorDrawRows(struct abuf *ab) {
 	int y;
 	for (y = 0; y < E.screenrows; y++) {
-		write(STDOUT_FILENO, "~", 1);
+		abAppend(ab, "~",1);
 		if (y < E.screenrows - 1)
-			write(STDOUT_FILENO, "\r\n", 2);
+			abAppend(ab, "\r\n", 2);
 	}
 }
 //refresh the screen
 void editorRefreshScreen() {
-	write(STDOUT_FILENO, "\x1b[2J",4); 	//clear the entire screen
+	struct abuf ab = ABUF_INIT;
+	abAppend(&ab,"\x1b[2J",4); 	//clear the entire screen
 		//2 	| argument of J, indicates we clear the entire screen
 		//J 	| "Erase In Display" (https://vt100.net/docs/vt100-ug/chapter3.html#ED)
-	write(STDOUT_FILENO, "\x1b[H", 3); 	//move the cursor to the 1st row & 1st column
+	abAppend(&ab, "\x1b[H", 3); 	//move the cursor to the 1st row & 1st column
 		//H - "Cursor Position" (https://vt100.net/docs/vt100-ug/chapter3.html#CUP)
-	editorDrawRows();
-	write(STDOUT_FILENO, "\x1b[H",3); 	//move cursor to beginning(top-left)
+	editorDrawRows(&ab);
+	abAppend(&ab, "\x1b[H",3); 	//move cursor to beginning(top-left)
+	
+	write(STDOUT_FILENO, ab.b, ab.len);
+	abFree(&ab);
 }
 
 /*** input ***/
