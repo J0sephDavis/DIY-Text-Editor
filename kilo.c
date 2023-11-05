@@ -16,6 +16,9 @@ enum editorKey {
 	ARROW_UP 	,
 	ARROW_DOWN 	,
 	//
+	HOME_KEY 	,
+	END_KEY 	,
+	//
 	PAGE_UP 	,
 	PAGE_DOWN 	,
 };
@@ -96,15 +99,21 @@ int editorReadKey() {
 		//get the next values in the sequence
 		if(read(STDIN_FILENO, &seq0, 1) != 1) return c;
 		if(read(STDIN_FILENO, &seq1, 1) != 1) return c;
-		
+		//handle escape sequnce
 		if (seq0 == '[') {
 			if (seq1 >= '0' && seq1 <= '9') {
 				if (read(STDIN_FILENO,&seq2, 1) != 1) return c;
-				if (seq2 == '~')
+				if (seq2 == '~') {
 					switch (seq1) {
+						case '1': return HOME_KEY;
+						case '4': return END_KEY;
 						case '5': return PAGE_UP;
 						case '6': return PAGE_DOWN;
+						case '7': return HOME_KEY;
+						case '8': return END_KEY;
 					}
+				
+				}
 			}
 			else {
 				switch (seq1) {
@@ -112,7 +121,15 @@ int editorReadKey() {
 					case 'B': return ARROW_DOWN;
 					case 'C': return ARROW_RIGHT;
 					case 'D': return ARROW_LEFT;
+					case 'H': return HOME_KEY;
+					case 'F': return END_KEY;
 				}
+			}
+		}
+		else if (seq0 == 'O') {
+			switch (seq1) {
+				case 'H': return HOME_KEY;
+				case 'F': return END_KEY;
 			}
 		}
 		//if the escape sequence wasn't able to be hanlded, it just returns escape (\x1b) at the end
