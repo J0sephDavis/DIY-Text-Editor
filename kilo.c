@@ -176,7 +176,6 @@ void editorRefreshScreen() {
 	snprintf(buf, sizeof(buf), "\x1b[%d;%dH", E.cy + 1, E.cx + 1);
 	abAppend(&ab, buf, strlen(buf));
 
-	abAppend(&ab, "\x1b[H",3); 	//move cursor to beginning(top-left)
 	abAppend(&ab,"\x1b[?25h",6);
 		//h 	| set mode
 		//?25l, see above, this should show the cursor?
@@ -186,6 +185,22 @@ void editorRefreshScreen() {
 }
 
 /*** input ***/
+void editorMoveCursor(char key) {
+	switch(key) {
+		case 'a':
+			E.cx--;
+			break;
+		case 'd':
+			E.cx++;
+			break;
+		case 'w':
+			E.cy--;
+			break;
+		case 's':
+			E.cy++;
+			break;
+	}
+}
 void editorProcessKeypress() {
 	char c = editorReadKey();
 
@@ -194,6 +209,12 @@ void editorProcessKeypress() {
 			write(STDOUT_FILENO, "\x1b[2J",4); 	//clear the entire screen
 			write(STDOUT_FILENO, "\x1b[H", 3); 	//move the cursor to the 1st row & 1st column
 			exit(0);
+			break;
+		case 'w':
+		case 'a':
+		case 's':
+		case 'd':
+			editorMoveCursor(c);
 			break;
 	}
 }
