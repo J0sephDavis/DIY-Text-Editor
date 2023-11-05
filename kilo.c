@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/ioctl.h>
+#include <sys/types.h>
 #include <termios.h>
 #include <unistd.h>
 /*** defines ***/
@@ -25,10 +26,17 @@ enum editorKey {
 	PAGE_DOWN 	,
 };
 /*** data ***/
+//an Editor ROW, dynamically stores a line of text
+typedef struct erow {
+	int size;
+	char *chars;
+} erow;
 struct editorConfig { 				//global struct that will contain our editor state
 	int cx,cy; 				//cursor x & y positions, 0,0 == top-left
 	int screenrows; 			//count of rows on screen
 	int screencols; 			//count of columns on screen
+	int numrows;
+	erow row;
 	struct termios original_termios; 	//the original state of the user's termio
 } E;
 
@@ -172,6 +180,18 @@ int getWindowSize(int *rows, int *cols) {
 	}
 	//
 }
+
+/*** file I/O ***/
+void editorOpen() {
+	char* line = "Hello World!";
+	size_t linelen = 13;
+	E.row.size = linelen;
+	E.row.chars = malloc(linelen+1);
+	memcpy(E.row.chars, line, linelen);
+	E.row.chars[linelen] = '\0';
+	E.numrows = 1;
+}
+
 /*** append buffer ***/
 /* To reduce the amount of write() calls we make. Thus, reducing flicker & unexpected behavior */
 struct abuf { 		//the append buffer
@@ -199,26 +219,33 @@ void abFree(struct abuf *ab) {
 void editorDrawRows(struct abuf *ab) {
 	int y;
 	for (y = 0; y < E.screenrows; y++) {
-		if (y == E.screenrows / 3) {
-			char welcome[80];
-			int welcomelen = snprintf(welcome, sizeof(welcome),
-					"Kilo editor -- version %s", KILO_VERSION);
-			if (welcomelen > E.screencols) welcomelen = E.screencols;
-			int padding = (E.screencols - welcomelen) / 2;
-			if (padding) {
-				abAppend(ab, "~", 1);
-				padding--;
+		if (y >= E.numrows) {
+			if (y == E.screenrows / 3) {
+				char welcome[80];
+				int welcomelen = snprintf(welcome, sizeof(welcome),
+						"Kilo editor -- version %s", KILO_VERSION);
+				if (welcomelen > E.screencols) welcomelen = E.screencols;
+				int padding = (E.screencols - welcomelen) / 2;
+				if (padding) {
+					abAppend(ab, "~", 1);
+					padding--;
+				}
+				while (padding--)
+					abAppend(ab, " ", 1);
+				abAppend(ab, welcome, welcomelen);
 			}
-			while (padding--)
-				abAppend(ab, " ", 1);
-			abAppend(ab, welcome, welcomelen);
-		}
-		else
-			abAppend(ab, "~",1);
+			else
+				abAppend(ab, "~",1);
 
-		abAppend(ab, "\x1b[K",3); 	// K = Erase in line
-		if (y < E.screenrows - 1)
-			abAppend(ab, "\r\n", 2);
+			abAppend(ab, "\x1b[K",3); 	// K = Erase in line
+			if (y < E.screenrows - 1)
+				abAppend(ab, "\r\n", 2);
+		}
+		else { //NOT (y>=numRows)
+			int len = E.row.size;
+			if (len > E.screencols) len = E.screencols;
+			abAppend(ab, E.row.chars, len);
+		}
 	}
 }
 //refresh the screen
@@ -304,6 +331,7 @@ void editorProcessKeypress() {
 void initEditor() {
 	E.cx = 0; 	//init cursor x position
 	E.cy = 0; 	//init cursor y position
+	E.numrows = 0; 	//init numRows
 	if (getWindowSize(&E.screenrows, &E.screencols) == -1)
 		die("getWindowSize");
 }
@@ -311,6 +339,7 @@ void initEditor() {
 int main() {
 	enableRawMode();
 	initEditor();
+	editorOpen();
 	while (1) {
 		editorRefreshScreen();
 		editorProcessKeypress();
