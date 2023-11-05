@@ -13,7 +13,7 @@
 
 /*** data ***/
 struct editorConfig { 				//global struct that will contain our editor state
-	int cx,cy; 				//cursor x & y positions
+	int cx,cy; 				//cursor x & y positions, 0,0 == top-left
 	int screenrows; 			//count of rows on screen
 	int screencols; 			//count of columns on screen
 	struct termios original_termios; 	//the original state of the user's termio
@@ -171,6 +171,11 @@ void editorRefreshScreen() {
 	abAppend(&ab, "\x1b[H", 3); 	//move the cursor to the 1st row & 1st column
 		//H - "Cursor Position" (https://vt100.net/docs/vt100-ug/chapter3.html#CUP)
 	editorDrawRows(&ab);
+
+	char buf[32];
+	snprintf(buf, sizeof(buf), "\x1b[%d;%dH", E.cy + 1, E.cx + 1);
+	abAppend(&ab, buf, strlen(buf));
+
 	abAppend(&ab, "\x1b[H",3); 	//move cursor to beginning(top-left)
 	abAppend(&ab,"\x1b[?25h",6);
 		//h 	| set mode
