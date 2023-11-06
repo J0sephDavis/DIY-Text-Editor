@@ -236,7 +236,7 @@ void editorDrawRows(struct abuf *ab) {
 	int y;
 	for (y = 0; y < E.screenrows; y++) {
 		if (y >= E.numrows) {
-			if (y == E.screenrows / 3) {
+			if (E.numrows == 0 && y == E.screenrows / 3) {
 				char welcome[80];
 				int welcomelen = snprintf(welcome, sizeof(welcome),
 						"Kilo editor -- version %s", KILO_VERSION);
@@ -355,7 +355,7 @@ void initEditor() {
 int main(int argc, char* argv[]) {
 	enableRawMode();
 	initEditor();
-	if (argc > 2) {
+	if (argc > 1) {
 		editorOpen(argv[1]);
 	}
 	while (1) {
