@@ -110,26 +110,23 @@ void enableRawMode() {
 int editorReadKey() {
 	int nread;
 	char c;
-	while ((nread = read(STDIN_FILENO, &c, 1)) == -1){ //if read == -1 it indicates a failure, on some systems it will return -1 & flag EAGAIN on timeout
-		if (nread == -1 && errno != EAGAIN)
-			die("read");
+	while ((nread = read(STDIN_FILENO, &c, 1)) != 1){
+		if (nread == -1 && errno != EAGAIN) die("read");//if read == -1 it indicates a failure, on some systems it will return -1 & flag EAGAIN on timeout
 	}
 	if (c == '\x1b') {
 		//if I create a char array for the sequence of escapes, we end up with w,a,s,d repeating their inputs infinitely until another character is pressed
 		//I search arouned & I am honestly unsure why this problem occurs, but simply adding char a[3] will cause this 'hanging' or 'reptition' where the cursor
 		//slowly drifts across the screen
-		char seq0;
-		char seq1;
-		char seq2;
+		char seq[3];
 		//get the next values in the sequence
-		if(read(STDIN_FILENO, &seq0, 1) != 1) return c;
-		if(read(STDIN_FILENO, &seq1, 1) != 1) return c;
+		if(read(STDIN_FILENO, &seq[0], 1) != 1) return c;
+		if(read(STDIN_FILENO, &seq[1], 1) != 1) return c;
 		//handle escape sequnce
-		if (seq0 == '[') {
-			if (seq1 >= '0' && seq1 <= '9') {
-				if (read(STDIN_FILENO,&seq2, 1) != 1) return c;
-				if (seq2 == '~') {
-					switch (seq1) {
+		if (seq[0] == '[') {
+			if (seq[1] >= '0' && seq[1] <= '9') {
+				if (read(STDIN_FILENO,&seq[2], 1) != 1) return c;
+				if (seq[2] == '~') {
+					switch (seq[1]) {
 						case '1': return HOME_KEY;
 						case '3': return DEL_KEY;
 						case '4': return END_KEY;
@@ -142,7 +139,7 @@ int editorReadKey() {
 				}
 			}
 			else {
-				switch (seq1) {
+				switch (seq[1]) {
 					case 'A': return ARROW_UP;
 					case 'B': return ARROW_DOWN;
 					case 'C': return ARROW_RIGHT;
@@ -152,13 +149,12 @@ int editorReadKey() {
 				}
 			}
 		}
-		else if (seq0 == 'O') {
-			switch (seq1) {
+		else if (seq[0] == 'O') {
+			switch (seq[1]) {
 				case 'H': return HOME_KEY;
 				case 'F': return END_KEY;
 			}
 		}
-		//if the escape sequence wasn't able to be hanlded, it just returns escape (\x1b) at the end
 	}
 	return c;
 }
@@ -496,6 +492,9 @@ void editorProcessKeypress() {
 			editorMoveCursor(c);
 			break;
 		//
+		default:
+			editorInsertChar(c);
+			break;
 	}
 }
 
