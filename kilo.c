@@ -33,7 +33,9 @@ enum editorKey {
 //an Editor ROW, dynamically stores a line of text
 typedef struct erow {
 	int size;
+	int rsize;
 	char *chars;
+	char *render;
 } erow;
 struct editorConfig { 				//global struct that will contain our editor state
 	int cx,cy; 				//cursor x & y positions, 0,0 == top-left
@@ -188,6 +190,28 @@ int getWindowSize(int *rows, int *cols) {
 }
 
 /*** file I/O ***/
+void editorUpdateRow(erow *row) {
+	int tabs = 0; 					//total tabs found in row
+	int j; 						//iteration variable
+	for (j = 0; j < row->size; j++) 		//for-each character in the row
+		if (row->chars[j] == '\t') tabs++; 	//if character = tab, tab++
+	free(row->render); 				//free the render string
+	row->render = malloc(row->size + tabs*7 + 1); 	//malloc the render string with extra-space allocated for spaces, 7 because a tab is 8 spaces, but '\t' already takes one
+
+	int idx = 0; 					//contains the number of letters copied into row->render
+	for (j = 0; j < row->size; j++) {
+		if (row->chars[j] == '\t') {
+			row->render[idx++] = ' ';
+			while (idx % 8 	!= 0)
+				row->render[idx++] = ' ';
+		}
+		else {
+			row->render[idx++] = row->chars[j];
+		}
+	}
+	row->render[idx] = '\0';
+	row->rsize = idx;
+}
 void editorAppendRow(char *s, size_t len) {
 	E.row = realloc(E.row, sizeof(erow) * (E.numrows + 1)); //reallocate the array
 	int at = E.numrows;
@@ -195,6 +219,10 @@ void editorAppendRow(char *s, size_t len) {
 	E.row[at].chars = malloc(len + 1);
 	memcpy(E.row[at].chars, s, len);
 	E.row[at].chars[len] = '\0';
+	
+	E.row[at].rsize = 0;
+	E.row[at].render = NULL;
+	editorUpdateRow(&E.row[at]);
 	E.numrows++;
 }
 /*** file I/O ***/
@@ -277,10 +305,10 @@ void editorDrawRows(struct abuf *ab) {
 			}
 		}
 		else { //NOT (filerow>=numRows)
-			int len = E.row[filerow].size - E.col_off;
+			int len = E.row[filerow].rsize - E.col_off;
 			if (len < 0) len = 0;
 			if (len > E.screencols) len = E.screencols;
-			abAppend(ab, &E.row[filerow].chars[E.col_off], len);
+			abAppend(ab, &E.row[filerow].render[E.col_off], len);
 		}
 		abAppend(ab, "\x1b[K",3); 	// K = Erase in line
 		if (y < E.screenrows - 1) {
