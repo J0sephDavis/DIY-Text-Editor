@@ -6,11 +6,13 @@
 #include <ctype.h>
 #include <errno.h>
 #include <stdio.h>
+#include <stdarg.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/ioctl.h>
 #include <sys/types.h>
 #include <termios.h>
+#include <time.h>
 #include <unistd.h>
 /*** defines ***/
 #define KILO_VERSION "0.0.1"
@@ -47,8 +49,10 @@ struct editorConfig { 				//global struct that will contain our editor state
 	int screencols; 			//count of columns on screen
 	int numrows; 				//the number of rows
 	erow *row; 				//array of rows
-	struct termios original_termios; 	//the original state of the user's termio
 	char* filename; 			//the name of the file
+	char statusmsg[80];
+	time_t statusmsg_time;
+	struct termios original_termios; 	//the original state of the user's termio
 } E;
 
 /*** terminal  ***/
@@ -318,6 +322,15 @@ void editorDrawStatusBar(struct abuf *ab) {
 		}
 	}
 	abAppend(ab, "\x1b[m",3);
+	abAppend(ab, "\r\n",2);
+}
+
+void editorDrawMessageBar(struct abuf *ab) {
+	abAppend(ab, "\x1b[K", 3);
+	int msglen = strlen(E.statusmsg);
+	if (msglen > E.screencols) msglen = E.screencols;
+	if (msglen && time(NULL) - E.statusmsg_time < 5)
+		abAppend(ab, E.statusmsg, msglen);
 }
 
 void editorDrawRows(struct abuf *ab) {
@@ -365,6 +378,7 @@ void editorRefreshScreen() {
 
 	editorDrawRows(&ab);
 	editorDrawStatusBar(&ab);
+	editorDrawMessageBar(&ab);
 
 	char buf[32];
 	snprintf(buf, sizeof(buf), "\x1b[%d;%dH", (E.cy - E.row_off) + 1, (E.rx - E.col_off) + 1);
@@ -376,6 +390,14 @@ void editorRefreshScreen() {
 	
 	write(STDOUT_FILENO, ab.b, ab.len);
 	abFree(&ab);
+}
+
+void editorSetStatusMessage(const char *fmt, ...) {
+	va_list ap;
+	va_start(ap,fmt);
+	vsnprintf(E.statusmsg, sizeof(E.statusmsg), fmt, ap);
+	va_end(ap);
+	E.statusmsg_time = time(NULL);
 }
 
 /*** input ***/
@@ -467,10 +489,13 @@ void initEditor() {
 	E.col_off = 0; 	//init column offset
 	E.numrows = 0; 	//init number of rows
 	E.row = NULL; 	//init the array of rows. 
-	if (getWindowSize(&E.screenrows, &E.screencols) == -1)
-		die("getWindowSize");
 	E.screenrows -= 1; //to make room for the status bar
 	E.filename = NULL; //init filename
+	E.statusmsg[0] = '\0';
+	E.statusmsg_time = 0;
+	if (getWindowSize(&E.screenrows, &E.screencols) == -1)
+		die("getWindowSize");
+	E.screenrows-=2;
 }
 
 int main(int argc, char* argv[]) {
@@ -479,6 +504,7 @@ int main(int argc, char* argv[]) {
 	if (argc > 1) {
 		editorOpen(argv[1]);
 	}
+	editorSetStatusMessage("HELP: Ctrl-Q = QUIT");
 	while (1) {
 		editorRefreshScreen();
 		editorProcessKeypress();
