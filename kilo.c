@@ -5,6 +5,7 @@
 
 #include <ctype.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <stdio.h>
 #include <stdarg.h>
 #include <stdlib.h>
@@ -296,6 +297,19 @@ void editorOpen(char* filename) {
 	fclose(fp);
 }
 
+void editorSave() {
+	if (E.filename == NULL) return; //no file to save to
+
+	int len; 						//the length of the buffer
+	char *buf = editorRowsToString(&len); 			//pointer to the buffer
+
+	int fd = open(E.filename, O_RDWR | O_CREAT, 0644); 	//open for RW / create, a file with chmod 0644 
+	ftruncate(fd,len); 					//sets the file-size to a specific length. Helps with data-loss prevention?
+	write(fd,buf,len); 					//write the buffer of length to the file
+	close(fd); 						//close the file
+	free(buf); 						//free the buffer
+}
+
 /*** append buffer ***/
 /* To reduce the amount of write() calls we make. Thus, reducing flicker & unexpected behavior */
 struct abuf { 		//the append buffer
@@ -482,6 +496,10 @@ void editorProcessKeypress() {
 			write(STDOUT_FILENO, "\x1b[2J",4); 	//clear the entire screen
 			write(STDOUT_FILENO, "\x1b[H", 3); 	//move the cursor to the 1st row & 1st column
 			exit(0);
+			break;
+
+		case CTRL_KEY('s'):
+			editorSave();
 			break;
 		//cursor movement
 		case HOME_KEY:
