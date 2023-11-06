@@ -37,6 +37,7 @@ typedef struct erow {
 } erow;
 struct editorConfig { 				//global struct that will contain our editor state
 	int cx,cy; 				//cursor x & y positions, 0,0 == top-left
+	int row_off; 				//row offset
 	int screenrows; 			//count of rows on screen
 	int screencols; 			//count of columns on screen
 	int numrows; 				//the number of rows
@@ -203,8 +204,7 @@ void editorOpen(char* filename) {
 	char* line = NULL;
 	size_t linecap = 0;
 	ssize_t linelen;
-	linelen = getline(&line, &linecap, fp);
-	if (linelen != -1) {
+	while((linelen = getline(&line, &linecap, fp)) != -1) {
 		while (linelen > 0 &&
 				(line[linelen - 1] == '\n' || line[linelen - 1] == '\r'))
 			linelen--;
@@ -241,7 +241,8 @@ void abFree(struct abuf *ab) {
 void editorDrawRows(struct abuf *ab) {
 	int y;
 	for (y = 0; y < E.screenrows; y++) {
-		if (y >= E.numrows) {
+		int filerow = y + E.row_off;
+		if (filerow >= E.numrows) {
 			if (E.numrows == 0 && y == E.screenrows / 3) {
 				char welcome[80];
 				int welcomelen = snprintf(welcome, sizeof(welcome),
@@ -256,17 +257,18 @@ void editorDrawRows(struct abuf *ab) {
 					abAppend(ab, " ", 1);
 				abAppend(ab, welcome, welcomelen);
 			}
-			else
+			else {
 				abAppend(ab, "~",1);
-
-			abAppend(ab, "\x1b[K",3); 	// K = Erase in line
-			if (y < E.screenrows - 1)
-				abAppend(ab, "\r\n", 2);
+			}
 		}
-		else { //NOT (y>=numRows)
-			int len = E.row[y].size;
+		else { //NOT (filerow>=numRows)
+			int len = E.row[filerow].size;
 			if (len > E.screencols) len = E.screencols;
-			abAppend(ab, E.row[y].chars, len);
+			abAppend(ab, E.row[filerow].chars, len);
+		}
+		abAppend(ab, "\x1b[K",3); 	// K = Erase in line
+		if (y < E.screenrows - 1) {
+			abAppend(ab, "\r\n", 2);		
 		}
 	}
 }
@@ -353,6 +355,7 @@ void editorProcessKeypress() {
 void initEditor() {
 	E.cx = 0; 	//init cursor x position
 	E.cy = 0; 	//init cursor y position
+	E.row_off = 0; 	//init row offset
 	E.numrows = 0; 	//init numRows
 	E.row = NULL; 	//init the array of rows. 
 	if (getWindowSize(&E.screenrows, &E.screencols) == -1)
