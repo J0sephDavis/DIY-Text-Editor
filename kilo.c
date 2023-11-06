@@ -39,8 +39,8 @@ struct editorConfig { 				//global struct that will contain our editor state
 	int cx,cy; 				//cursor x & y positions, 0,0 == top-left
 	int screenrows; 			//count of rows on screen
 	int screencols; 			//count of columns on screen
-	int numrows;
-	erow row;
+	int numrows; 				//the number of rows
+	erow *row; 				//array of rows
 	struct termios original_termios; 	//the original state of the user's termio
 } E;
 
@@ -348,6 +348,7 @@ void initEditor() {
 	E.cx = 0; 	//init cursor x position
 	E.cy = 0; 	//init cursor y position
 	E.numrows = 0; 	//init numRows
+	E.row = NULL; 	//init the array of rows. 
 	if (getWindowSize(&E.screenrows, &E.screencols) == -1)
 		die("getWindowSize");
 }
