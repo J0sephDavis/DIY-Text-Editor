@@ -48,6 +48,7 @@ struct editorConfig { 				//global struct that will contain our editor state
 	int numrows; 				//the number of rows
 	erow *row; 				//array of rows
 	struct termios original_termios; 	//the original state of the user's termio
+	char* filename; 			//the name of the file
 } E;
 
 /*** terminal  ***/
@@ -239,6 +240,8 @@ void editorAppendRow(char *s, size_t len) {
 }
 /*** file I/O ***/
 void editorOpen(char* filename) {
+	free(E.filename);
+	E.filename = strdup(filename);
 	FILE *fp = fopen(filename, "r");
 	if (!fp) die("fopen");
 
@@ -297,6 +300,20 @@ void editorScroll() {
 	}
 }
 
+void editorDrawStatusBar(struct abuf *ab) {
+	abAppend(ab,"\x1b[7m", 4);
+	
+	char status[80];
+	int len = snprintf(status, sizeof(status), "%.20s - %d lines", E.filename ? E.filename : "[No Name]", E.numrows);
+	if (len > E.screencols) len = E.screencols;
+	abAppend(ab, status, len);
+	while (len < E.screencols) {
+		abAppend(ab, " ", 1);
+		len++;
+	}
+	abAppend(ab, "\x1b[m",3);
+}
+
 void editorDrawRows(struct abuf *ab) {
 	int y;
 	for (y = 0; y < E.screenrows; y++) {
@@ -327,9 +344,7 @@ void editorDrawRows(struct abuf *ab) {
 			abAppend(ab, &E.row[filerow].render[E.col_off], len);
 		}
 		abAppend(ab, "\x1b[K",3); 	// K = Erase in line
-		if (y < E.screenrows - 1) {
-			abAppend(ab, "\r\n", 2);		
-		}
+		abAppend(ab, "\r\n", 2);		
 	}
 }
 //refresh the screen
@@ -341,7 +356,9 @@ void editorRefreshScreen() {
 		//?25 	| not in the usually associated vt100 documents; however, it should hide the cursor
 	abAppend(&ab, "\x1b[H", 3); 	//move the cursor to the 1st row & 1st column
 		//H - "Cursor Position" (https://vt100.net/docs/vt100-ug/chapter3.html#CUP)
+
 	editorDrawRows(&ab);
+	editorDrawStatusBar(&ab);
 
 	char buf[32];
 	snprintf(buf, sizeof(buf), "\x1b[%d;%dH", (E.cy - E.row_off) + 1, (E.rx - E.col_off) + 1);
@@ -446,6 +463,8 @@ void initEditor() {
 	E.row = NULL; 	//init the array of rows. 
 	if (getWindowSize(&E.screenrows, &E.screencols) == -1)
 		die("getWindowSize");
+	E.screenrows -= 1; //to make room for the status bar
+	E.filename = NULL; //init filename
 }
 
 int main(int argc, char* argv[]) {
