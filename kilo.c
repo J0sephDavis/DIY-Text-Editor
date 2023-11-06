@@ -38,6 +38,7 @@ typedef struct erow {
 struct editorConfig { 				//global struct that will contain our editor state
 	int cx,cy; 				//cursor x & y positions, 0,0 == top-left
 	int row_off; 				//row offset
+	int col_off; 				//column offset
 	int screenrows; 			//count of rows on screen
 	int screencols; 			//count of columns on screen
 	int numrows; 				//the number of rows
@@ -237,7 +238,21 @@ void abFree(struct abuf *ab) {
 }
 
 /*** output ***/
-//draw a tilde at the beginning of each line
+void editorScroll() {
+	if (E.cy < E.row_off) {
+		E.row_off = E.cy;
+	}
+	if (E.cy >= E.row_off + E.screenrows) {
+		E.row_off = E.cy - E.screenrows + 1;
+	}
+	if (E.cx < E.col_off) {
+		E.col_off = E.cx;
+	}
+	if (E.cx > E.col_off + E.screencols) {
+		E.col_off = E.cx - E.screencols + 1;
+	}
+}
+
 void editorDrawRows(struct abuf *ab) {
 	int y;
 	for (y = 0; y < E.screenrows; y++) {
@@ -262,9 +277,10 @@ void editorDrawRows(struct abuf *ab) {
 			}
 		}
 		else { //NOT (filerow>=numRows)
-			int len = E.row[filerow].size;
+			int len = E.row[filerow].size - E.col_off;
+			if (len < 0) len = 0;
 			if (len > E.screencols) len = E.screencols;
-			abAppend(ab, E.row[filerow].chars, len);
+			abAppend(ab, &E.row[filerow].chars[E.col_off], len);
 		}
 		abAppend(ab, "\x1b[K",3); 	// K = Erase in line
 		if (y < E.screenrows - 1) {
@@ -274,6 +290,7 @@ void editorDrawRows(struct abuf *ab) {
 }
 //refresh the screen
 void editorRefreshScreen() {
+	editorScroll();
 	struct abuf ab = ABUF_INIT;
 	abAppend(&ab,"\x1b[?25l",6);
 		//l 	| reset mode
@@ -283,7 +300,7 @@ void editorRefreshScreen() {
 	editorDrawRows(&ab);
 
 	char buf[32];
-	snprintf(buf, sizeof(buf), "\x1b[%d;%dH", E.cy + 1, E.cx + 1);
+	snprintf(buf, sizeof(buf), "\x1b[%d;%dH", (E.cy - E.row_off) + 1, (E.cx - E.col_off) + 1);
 	abAppend(&ab, buf, strlen(buf));
 
 	abAppend(&ab,"\x1b[?25h",6);
@@ -302,15 +319,14 @@ void editorMoveCursor(int key) {
 				E.cx--;
 			break;
 		case ARROW_RIGHT:
-			if (E.cx != E.screencols - 1)
-				E.cx++;
+			E.cx++;
 			break;
 		case ARROW_UP:
 			if (E.cy != 0)
 				E.cy--;
 			break;
 		case ARROW_DOWN:
-			if (E.cy != E.screenrows - 1)
+			if (E.cy < E.numrows)
 				E.cy++;
 			break;
 	}
@@ -356,7 +372,8 @@ void initEditor() {
 	E.cx = 0; 	//init cursor x position
 	E.cy = 0; 	//init cursor y position
 	E.row_off = 0; 	//init row offset
-	E.numrows = 0; 	//init numRows
+	E.col_off = 0; 	//init column offset
+	E.numrows = 0; 	//init number of rows
 	E.row = NULL; 	//init the array of rows. 
 	if (getWindowSize(&E.screenrows, &E.screencols) == -1)
 		die("getWindowSize");
