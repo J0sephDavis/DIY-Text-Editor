@@ -304,10 +304,17 @@ void editorSave() {
 	char *buf = editorRowsToString(&len); 			//pointer to the buffer
 
 	int fd = open(E.filename, O_RDWR | O_CREAT, 0644); 	//open for RW / create, a file with chmod 0644 
-	ftruncate(fd,len); 					//sets the file-size to a specific length. Helps with data-loss prevention?
-	write(fd,buf,len); 					//write the buffer of length to the file
-	close(fd); 						//close the file
-	free(buf); 						//free the buffer
+	if (fd != -1) {
+		if(ftruncate(fd,len) != -1) { 			//sets the file-size to a specific length. Helps with data-loss prevention?
+			if (write(fd,buf,len) == len) { 	//write the buffer of length to the file
+				close(fd); 			//close the file
+				free(buf); 			//free the buffer
+				return;
+			}
+		}
+		close(fd);
+	}
+	free(buf);
 }
 
 /*** append buffer ***/
