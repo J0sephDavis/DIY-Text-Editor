@@ -259,6 +259,24 @@ void editorInsertChar(int c) {
 }
 
 /*** file I/O ***/
+char *editorRowsToString(int *buflen) {
+	int totlen = 0; 					//sum of the length of all rows + a new-line character for each
+	int j; 							//iterator
+	for (j = 0; j < E.numrows; j++) 			//for-each row
+		totlen += E.row[j].size + 1; 			//add a row & its new-line to the total
+	*buflen = totlen; 					//set the buffer length
+
+	char *buf = malloc(totlen); 				//allocate a buffer to hold all the rows
+	char *p = buf; 						//pointer to end of buffer
+	for (j=0; j< E.numrows; j++) { 				//for-each row in rows
+		memcpy(p, E.row[j].chars, E.row[j].size); 	//copy the current row into the end of the buffer
+		p += E.row[j].size; 				//move the pointer to the end of the buffer
+		*p = '\n'; 					//add a new-line character
+		p++; 						//move pointer to end of buffer again
+	}
+	return buf; 						//expect the caller to free memory
+}
+
 void editorOpen(char* filename) {
 	free(E.filename);
 	E.filename = strdup(filename);
