@@ -206,7 +206,7 @@ int editorRowCxtoRx(erow *row, int cx) {
 	}
 	return rx;
 }
-/*** file I/O ***/
+
 void editorUpdateRow(erow *row) {
 	int tabs = 0; 					//total tabs found in row
 	int j; 						//iteration variable
@@ -229,6 +229,7 @@ void editorUpdateRow(erow *row) {
 	row->render[idx] = '\0';
 	row->rsize = idx;
 }
+
 void editorAppendRow(char *s, size_t len) {
 	E.row = realloc(E.row, sizeof(erow) * (E.numrows + 1)); //reallocate the array
 	int at = E.numrows;
@@ -242,6 +243,24 @@ void editorAppendRow(char *s, size_t len) {
 	editorUpdateRow(&E.row[at]);
 	E.numrows++;
 }
+
+void editorRowInsertChar(erow *row, int at, int c) {
+	if (at < 0 || at > row->size) at = row->size; 				//validate at
+	row->chars = realloc(row->chars, row->size + 2); 			//make space for character to insert & null byte
+	memmove(&row->chars[at+1], &row->chars[at], row->size - at + 1); 	//I believe this is moving the final character, a null byte, to the new end of string
+	row->size++; 								//inrement row size
+	row->chars[at] = c; 							//insert the new caracter
+	editorUpdateRow(row); 							//update row
+}
+/*** editor operations ***/
+void editorInsertChar(int c) {
+	if (E.cy == E.numrows) { 			//if the cursor is at the end of the file
+		editorAppendRow("",0); 			//append a blank row
+	}
+	editorRowInsertChar(&E.row[E.cy], E.cx, c); 	//insert the character into the row, and column, marked by the cursor
+	E.cx++; 					//increment the column cursor after inserting the character
+}
+
 /*** file I/O ***/
 void editorOpen(char* filename) {
 	free(E.filename);
