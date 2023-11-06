@@ -14,6 +14,7 @@
 #include <unistd.h>
 /*** defines ***/
 #define KILO_VERSION "0.0.1"
+#define KILO_TAB_STOP 8
 #define CTRL_KEY(k) ((k) & 0x1f)
 enum editorKey {
 	ARROW_LEFT 	= 1000,
@@ -196,7 +197,7 @@ void editorUpdateRow(erow *row) {
 	for (j = 0; j < row->size; j++) 		//for-each character in the row
 		if (row->chars[j] == '\t') tabs++; 	//if character = tab, tab++
 	free(row->render); 				//free the render string
-	row->render = malloc(row->size + tabs*7 + 1); 	//malloc the render string with extra-space allocated for spaces, 7 because a tab is 8 spaces, but '\t' already takes one
+	row->render = malloc(row->size + tabs*(KILO_TAB_STOP-1) + 1); 	//malloc the render string with extra-space allocated for spaces, TAB_STOP-1 because \t' =1
 
 	int idx = 0; 					//contains the number of letters copied into row->render
 	for (j = 0; j < row->size; j++) {
