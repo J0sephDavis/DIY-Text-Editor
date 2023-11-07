@@ -56,6 +56,8 @@ struct editorConfig { 				//global struct that will contain our editor state
 	time_t statusmsg_time;
 	struct termios original_termios; 	//the original state of the user's termio
 } E;
+/*** prototypes ***/
+void editorSetStatusMessage(const char* fmt, ...);
 
 /*** terminal  ***/
 //prints error message & exits program
@@ -309,12 +311,14 @@ void editorSave() {
 			if (write(fd,buf,len) == len) { 	//write the buffer of length to the file
 				close(fd); 			//close the file
 				free(buf); 			//free the buffer
+				editorSetStatusMessage("%d bytes written to disk", len);
 				return;
 			}
 		}
 		close(fd);
 	}
 	free(buf);
+	editorSetStatusMessage("Failed to save. I/O Error: %s", strerror(errno));
 }
 
 /*** append buffer ***/
@@ -579,7 +583,7 @@ int main(int argc, char* argv[]) {
 	if (argc > 1) {
 		editorOpen(argv[1]);
 	}
-	editorSetStatusMessage("HELP: Ctrl-Q = QUIT");
+	editorSetStatusMessage("HELP: Ctrl-S = SAVE | Ctrl-Q = QUIT");
 	while (1) {
 		editorRefreshScreen();
 		editorProcessKeypress();
