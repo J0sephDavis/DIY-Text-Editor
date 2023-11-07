@@ -248,6 +248,20 @@ void editorAppendRow(char *s, size_t len) {
 	E.dirty++;
 }
 
+void editorFreeRow(erow *row) {
+	free(row->render);
+	free(row->chars);
+}
+
+void editorDelRow(int at) {
+	if (at < 0 || at >= E.numrows) return;
+	editorFreeRow(&E.row[at]);
+	memmove(&E.row[at], &E.row[at+1], sizeof(erow) * (E.numrows - at - 1));
+	E.numrows--;
+	E.dirty++;
+
+}
+
 void editorRowInsertChar(erow *row, int at, int c) {
 	if (at < 0 || at > row->size) at = row->size; 				//validate at
 	row->chars = realloc(row->chars, row->size + 2); 			//make space for character to insert & null byte
@@ -255,6 +269,15 @@ void editorRowInsertChar(erow *row, int at, int c) {
 	row->size++; 								//inrement row size
 	row->chars[at] = c; 							//insert the new caracter
 	editorUpdateRow(row); 							//update row
+	E.dirty++;
+}
+
+void editorRowAppendString(erow *row, char *s, size_t len) {
+	row->chars = realloc(row->chars, row->size + len + 1);
+	memcpy(&row->chars[row->size], s, len);
+	row->size += len;
+	row->chars[row->size] = '\0';
+	editorUpdateRow(row);
 	E.dirty++;
 }
 
@@ -277,9 +300,15 @@ void editorInsertChar(int c) {
 
 void editorDelChar() {
 	if (E.cy == E.numrows) return; 			//if the cursor is at the end of the file, we cannot delete anything
+	erow *row = &E.row[E.cy];
 	if (E.cx > 0) {
-		editorRowDelChar(&E.row[E.cy], E.cx - 1); 	//delete the character in the current row at the current column
+		editorRowDelChar(row, E.cx - 1); 	//delete the character in the current row at the current column
 		E.cx--; 					//decrement the column cursor after deleting the character
+	} else {
+		E.cx = E.row[E.cy - 1].size;
+		editorRowAppendString(&E.row[E.cy-1], row->chars, row->size);
+		editorDelRow(E.cy);
+		E.cy--;
 	}
 }
 
@@ -558,6 +587,7 @@ void editorProcessKeypress() {
 		case BACKSPACE:
 		case CTRL_KEY('h'):
 		case DEL_KEY:
+			//delete key @ end-of-line should move the line under to it
 			if (c== DEL_KEY) editorMoveCursor(ARROW_RIGHT);
 			editorDelChar();
 			break;
