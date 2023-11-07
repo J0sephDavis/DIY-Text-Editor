@@ -51,6 +51,7 @@ struct editorConfig { 				//global struct that will contain our editor state
 	int screencols; 			//count of columns on screen
 	int numrows; 				//the number of rows
 	erow *row; 				//array of rows
+	int dirty;
 	char* filename; 			//the name of the file
 	char statusmsg[80];
 	time_t statusmsg_time;
@@ -242,6 +243,7 @@ void editorAppendRow(char *s, size_t len) {
 	E.row[at].render = NULL;
 	editorUpdateRow(&E.row[at]);
 	E.numrows++;
+	E.dirty++;
 }
 
 void editorRowInsertChar(erow *row, int at, int c) {
@@ -251,6 +253,7 @@ void editorRowInsertChar(erow *row, int at, int c) {
 	row->size++; 								//inrement row size
 	row->chars[at] = c; 							//insert the new caracter
 	editorUpdateRow(row); 							//update row
+	E.dirty++;
 }
 /*** editor operations ***/
 void editorInsertChar(int c) {
@@ -297,6 +300,7 @@ void editorOpen(char* filename) {
 	}
 	free(line);
 	fclose(fp);
+	E.dirty = 0;
 }
 
 void editorSave() {
@@ -312,6 +316,7 @@ void editorSave() {
 				close(fd); 			//close the file
 				free(buf); 			//free the buffer
 				editorSetStatusMessage("%d bytes written to disk", len);
+				E.dirty = 0;
 				return;
 			}
 		}
@@ -367,7 +372,10 @@ void editorDrawStatusBar(struct abuf *ab) {
 	abAppend(ab,"\x1b[7m", 4);
 	
 	char status[80], rstatus[80];
-	int len = snprintf(status, sizeof(status), "%.20s - %d lines", E.filename ? E.filename : "[No Name]", E.numrows);
+	int len = snprintf(status, sizeof(status), "%.20s - %d lines %s",
+			E.filename ? E.filename : "[No Name]",
+			E.numrows,
+			E.dirty ? "(modified)" : "");
 	int rlen = snprintf(rstatus, sizeof(rstatus), "%d/%d", E.cy + 1, E.numrows);
 	if (len > E.screencols) len = E.screencols;
 	abAppend(ab, status, len);
@@ -568,6 +576,7 @@ void initEditor() {
 	E.col_off = 0; 	//init column offset
 	E.numrows = 0; 	//init number of rows
 	E.row = NULL; 	//init the array of rows. 
+	E.dirty = 0; 	//the file is clean before we edit
 	E.screenrows -= 1; //to make room for the status bar
 	E.filename = NULL; //init filename
 	E.statusmsg[0] = '\0';
