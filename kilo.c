@@ -213,11 +213,12 @@ int getWindowSize(int *rows, int *cols) {
 void editorUpdateSyntax(erow *row) {
 	row->hl = realloc(row->hl, row->rsize); 	//because the highlights refer to every character in render, they are the same length
 	memset(row->hl, HL_NORMAL, row->rsize); 	//set all the values to be of NORMAL highlight
-	int i;
-	for (i = 0; i < row->rsize; i++) { 		//FOR-EACH char in row->render
-		if (isdigit(row->render[i])) { 		//if it is a digit
-			row->hl[i] = HL_NUMBER; 	//set the highlighting to NUMBER
-		}
+	int i=0;
+	while (i < row->size) { 			//while the index is less than the length of render
+		char c = row->render[i]; 		//the character at index i 
+		if (isdigit(c)) 			//if it is a digit
+			row->hl[i] = HL_NUMBER; 	//set the highlight to a number
+		i++; 					//increase inde
 	}
 }
 
