@@ -598,23 +598,30 @@ void editorDrawRows(struct abuf *ab) {
 				abAppend(ab, "~",1);
 			}
 		}
-		else { //NOT (filerow>=numRows) 			//ACTUAL CONTENT
-			int len = E.row[filerow].rsize - E.col_off; 	//the length of the visible line
-			if (len < 0) len = 0; 				//validate length
-			if (len > E.screencols) len = E.screencols; 	//if the length is greater than the currently visible columns, truncate length
-			char *c = &E.row[filerow].render[E.col_off]; 	//pointer to the first visible character in a row
-			unsigned char *hl = &E.row[filerow].hl[E.col_off]; //the current highlight
+		else { //NOT (filerow>=numRows) 				//ACTUAL CONTENT
+			int len = E.row[filerow].rsize - E.col_off; 		//the length of the visible line
+			if (len < 0) len = 0; 					//validate length
+			if (len > E.screencols) len = E.screencols; 		//if the length is greater than the currently visible columns, truncate length
+			char *c = &E.row[filerow].render[E.col_off]; 		//pointer to the first visible character in a row
+			unsigned char *hl = &E.row[filerow].hl[E.col_off]; 	//the current highlight
+			int current_color = -1;
 			int j;
-			for (j = 0; j < len; j++) { 			//for each character in the visible segment of the row
-				if (hl[j] == HL_NORMAL) { 		//if of normal highlight
-					abAppend(ab, "\x1b[39m",5); 	//set color to normal
-					abAppend(ab, &c[j],1); 		//print character
+			for (j = 0; j < len; j++) { 				//for each character in the visible segment of the row
+				if (hl[j] == HL_NORMAL) { 			//if of normal highlight
+					if (current_color != -1) {
+						abAppend(ab, "\x1b[39m",5); 		//set color to normal
+						current_color = -1;
+					}
+					abAppend(ab, &c[j],1); 			//print character
 				}
 				else {
 					int color = editorSyntaxToColor(hl[j]);	//get the color for the syntax
-					char buf[16];
-					int clen = snprintf(buf, sizeof(buf), "\x1b[%dm",color);
-					abAppend(ab, buf, clen);
+					if (color != current_color) {
+						current_color = color;
+						char buf[16];
+						int clen = snprintf(buf, sizeof(buf), "\x1b[%dm",color);
+						abAppend(ab, buf, clen);
+					}
 					abAppend(ab, &c[j], 1); 		//print character
 				}
 			}
