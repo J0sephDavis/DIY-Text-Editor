@@ -434,8 +434,21 @@ void editorFindCallback(char* query, int key) {
 }
 //editor find, calls callback
 void editorFind() {
+	//save context information
+	int saved_cx = E.cx;
+	int saved_cy = E.cy;
+	int saved_coloff = E.col_off;
+	int saved_rowoff = E.row_off;
+
 	char *query = editorPrompt("Search %s (ESC to cancel)", editorFindCallback);
 	if (query) free(query); 				//free the query, if it exists
+	else {
+		//restore context
+		E.cx 		= saved_cx; 
+		E.cy 		= saved_cy; 
+		E.col_off 	= saved_coloff; 
+		E.row_off 	= saved_rowoff; 
+	}
 }
 
 /*** append buffer ***/
