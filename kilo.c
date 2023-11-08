@@ -570,7 +570,16 @@ void editorDrawRows(struct abuf *ab) {
 			int len = E.row[filerow].rsize - E.col_off;
 			if (len < 0) len = 0;
 			if (len > E.screencols) len = E.screencols;
-			abAppend(ab, &E.row[filerow].render[E.col_off], len);
+			char *c = &E.row[filerow].render[E.col_off];
+			int j;
+			for (j = 0; j < len; j++) {
+				if (isdigit(c[j])) {
+					abAppend(ab, "\x1b[31m", 5); 	//set color to red
+					abAppend(ab, &c[j], 1); 	//add the digit
+					abAppend(ab, "\x1b[39m", 5); 	//set color back to 'normal'
+				} else abAppend(ab, &c[j],1);
+
+			}
 		}
 		abAppend(ab, "\x1b[K",3); 	// K = Erase in line
 		abAppend(ab, "\r\n", 2);		
