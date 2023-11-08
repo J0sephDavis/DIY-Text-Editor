@@ -213,12 +213,20 @@ void editorUpdateSyntax(erow *row) {
 	row->hl = realloc(row->hl, row->rsize); 	//because the highlights refer to every character in render, they are the same length
 	memset(row->hl, HL_NORMAL, row->rsize); 	//set all the values to be of NORMAL highlight
 	int i;
-	for (i = 0; i < row->rsize; i++) {
-		if (isdigit(row->render[i])) {
-			row->hl[i] = HL_NUMBER;
+	for (i = 0; i < row->rsize; i++) { 		//FOR-EACH char in row->render
+		if (isdigit(row->render[i])) { 		//if it is a digit
+			row->hl[i] = HL_NUMBER; 	//set the highlighting to NUMBER
 		}
 	}
 }
+
+int editorSyntaxToColor(int hl) {
+	switch(hl) { 	//does not need to handle HL_NORMAL, this is handled elsewhere
+		case HL_NUMBER: return 31; 	//foreground red
+		default: return 37; 		//foreground white
+	}
+}
+
 
 /*** row operations ***/
 int editorRowCxtoRx(erow *row, int cx) { 	//converts a character index into a render index
@@ -569,10 +577,10 @@ void editorDrawMessageBar(struct abuf *ab) {
 
 void editorDrawRows(struct abuf *ab) {
 	int y;
-	for (y = 0; y < E.screenrows; y++) {
-		int filerow = y + E.row_off;
-		if (filerow >= E.numrows) {
-			if (E.numrows == 0 && y == E.screenrows / 3) {
+	for (y = 0; y < E.screenrows; y++) { 				//for-each row in the screen
+		int filerow = y + E.row_off; 				//the current visible line of the file
+		if (filerow >= E.numrows) { 				//if the file-row is greater than the number of rows in the editor
+			if (E.numrows == 0 && y == E.screenrows / 3) { 	//WELCOME MESSAGE
 				char welcome[80];
 				int welcomelen = snprintf(welcome, sizeof(welcome),
 						"Kilo editor -- version %s", KILO_VERSION);
@@ -590,20 +598,27 @@ void editorDrawRows(struct abuf *ab) {
 				abAppend(ab, "~",1);
 			}
 		}
-		else { //NOT (filerow>=numRows)
-			int len = E.row[filerow].rsize - E.col_off;
-			if (len < 0) len = 0;
-			if (len > E.screencols) len = E.screencols;
-			char *c = &E.row[filerow].render[E.col_off];
+		else { //NOT (filerow>=numRows) 			//ACTUAL CONTENT
+			int len = E.row[filerow].rsize - E.col_off; 	//the length of the visible line
+			if (len < 0) len = 0; 				//validate length
+			if (len > E.screencols) len = E.screencols; 	//if the length is greater than the currently visible columns, truncate length
+			char *c = &E.row[filerow].render[E.col_off]; 	//pointer to the first visible character in a row
+			unsigned char *hl = &E.row[filerow].hl[E.col_off]; //the current highlight
 			int j;
-			for (j = 0; j < len; j++) {
-				if (isdigit(c[j])) {
-					abAppend(ab, "\x1b[31m", 5); 	//set color to red
-					abAppend(ab, &c[j], 1); 	//add the digit
-					abAppend(ab, "\x1b[39m", 5); 	//set color back to 'normal'
-				} else abAppend(ab, &c[j],1);
-
+			for (j = 0; j < len; j++) { 			//for each character in the visible segment of the row
+				if (hl[j] == HL_NORMAL) { 		//if of normal highlight
+					abAppend(ab, "\x1b[39m",5); 	//set color to normal
+					abAppend(ab, &c[j],1); 		//print character
+				}
+				else {
+					int color = editorSyntaxToColor(hl[j]);	//get the color for the syntax
+					char buf[16];
+					int clen = snprintf(buf, sizeof(buf), "\x1b[%dm",color);
+					abAppend(ab, buf, clen);
+					abAppend(ab, &c[j], 1); 		//print character
+				}
 			}
+			abAppend(ab, "\x1b[39m",5); //set color to normal
 		}
 		abAppend(ab, "\x1b[K",3); 	// K = Erase in line
 		abAppend(ab, "\r\n", 2);		
