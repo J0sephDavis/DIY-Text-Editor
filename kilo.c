@@ -424,7 +424,7 @@ void editorFind() {
 		char *match = strstr(row->render, query); 	//returns a pointer to the first occurence of the QUERY in the row
 		if (match) { 					//if the pointer is not NULL, meaning we have a match
 			E.cy = i; 				//set the cursor to the current row
-			E.cx = match - row->render; 		//set the cursor to the beginning of the match
+			E.cx = editorRowRxtoCx(row,match - row->render); 		//set the cursor to the beginning of the match
 			E.row_off = E.numrows;  		//set row_offset to the bottom of the file so that the editorScroll will bring us to the matching line(top of screen)
 			break; 					//break to end the search
 		}
@@ -679,6 +679,10 @@ void editorProcessKeypress() {
 				E.cx = E.row[E.cy].size;
 			break;
 		//
+		case CTRL_KEY('f'):
+			editorFind();
+			break;
+		//
 		case BACKSPACE:
 		case CTRL_KEY('h'):
 		case DEL_KEY:
@@ -745,7 +749,7 @@ int main(int argc, char* argv[]) {
 	if (argc > 1) {
 		editorOpen(argv[1]);
 	}
-	editorSetStatusMessage("HELP: Ctrl-S = SAVE | Ctrl-Q = QUIT");
+	editorSetStatusMessage("HELP: Ctrl-S = SAVE | Ctrl-Q = QUIT | Ctrl-F = FIND");
 	while (1) {
 		editorRefreshScreen();
 		editorProcessKeypress();
