@@ -62,7 +62,7 @@ struct editorConfig { 				//global struct that will contain our editor state
 /*** prototypes ***/
 void editorSetStatusMessage(const char* fmt, ...);
 void editorRefreshScreen();
-char *editorPrompt(char *prompt);
+char *editorPrompt(char *prompt, void (*callback)(char *,int));
 
 /*** terminal  ***/
 //prints error message & exits program
@@ -385,7 +385,7 @@ void editorOpen(char* filename) {
 
 void editorSave() {
 	if (E.filename == NULL) { 				//no file to save to
-		E.filename = editorPrompt("Save as %s"); 	//prompt for a file-name
+		E.filename = editorPrompt("Save as %s", NULL); 	//prompt for a file-name
 		if (E.filename == NULL) {
 			editorSetStatusMessage("Save aborted");
 			return;
@@ -415,7 +415,7 @@ void editorSave() {
 /*** find ***/
 
 void editorFind() {
-	char *query = editorPrompt("Search %s (ESC to cancel)");
+	char *query = editorPrompt("Search %s (ESC to cancel)", NULL);
 	if (query == NULL) return; 				//abort if user aborted
 
 	int i;
@@ -573,7 +573,7 @@ void editorSetStatusMessage(const char *fmt, ...) {
 }
 
 /*** input ***/
-char *editorPrompt(char *prompt) { 				//displays a prompt in the status bar
+char *editorPrompt(char *prompt, void (*callback)(char *, int)) { 				//displays a prompt in the status bar
 	size_t bufsize = 128;
 	char *buf = malloc(bufsize); 				//stores user-input
 
@@ -590,12 +590,14 @@ char *editorPrompt(char *prompt) { 				//displays a prompt in the status bar
 		}
 		else if (c == '\x1b') { 			//ELSE-IF ESCAPE
 			editorSetStatusMessage(""); 		//clear the status message
+			if (callback) callback(buf,c);
 			free(buf); 				//free the buffer
 			return NULL; 				//RETURN NULL
 		}
 		else if (c == '\r') { 				//ELSE-IF ENTER
 			if (buflen != 0) { 			//IF the user has typed SOMETHING
 				editorSetStatusMessage(""); 	//clear the status message
+				if (callback) callback(buf,c);
 				return buf; 			//RETURN user-input
 			}
 		}
@@ -607,7 +609,7 @@ char *editorPrompt(char *prompt) { 				//displays a prompt in the status bar
 			buf[buflen++]  = c; 			//add the input to the string
 			buf[buflen] = '\0'; 			//terminate string with null-byte
 		}
-		
+		if (callback) callback(buf,c);
 	}
 }
 
