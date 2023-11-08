@@ -226,7 +226,8 @@ void editorUpdateSyntax(erow *row) {
 	while (i < row->size) { 			//while the index is less than the length of render
 		char c = row->render[i]; 		//the character at index i 
 		unsigned char prev_hl = (i>0) ? row->hl[i-1] : HL_NORMAL;
-		if (isdigit(c) &&  (prev_sep || prev_hl == HL_NUMBER)) { 	//if the character is a digit and (the previous char was a SEPARATOR or NUMBER)
+		if ((isdigit(c) &&  (prev_sep || prev_hl == HL_NUMBER)) //if the character is a digit and (the previous char was a SEPARATOR or highlighted as a NUMBER)
+			|| (c == '.' && prev_hl == HL_NUMBER)) { 	//if the character is a decimal, and previous value is highlighted as a number
 			row->hl[i] = HL_NUMBER; 	//set the highlight to a number
 			i++; 				//increase index
 			prev_sep = 0; 			//set prev_sep flag to 0, since this was a number
