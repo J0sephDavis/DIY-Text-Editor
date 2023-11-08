@@ -36,6 +36,11 @@ enum editorKey {
 	PAGE_UP 	,
 	PAGE_DOWN 	,
 };
+
+enum editorHighlight {
+	HL_NORMAL 	= 0,
+	HL_NUMBER 	,
+};
 /*** data ***/
 //an Editor ROW, dynamically stores a line of text
 typedef struct erow {
@@ -43,6 +48,7 @@ typedef struct erow {
 	int rsize;
 	char *chars;
 	char *render;
+	unsigned char *hl; //indicates whether a character, in RENDER, is part of a string, comment, number, &c.
 } erow;
 struct editorConfig { 				//global struct that will contain our editor state
 	int cx,cy; 				//cursor x & y positions, 0,0 == top-left
@@ -200,6 +206,20 @@ int getWindowSize(int *rows, int *cols) {
 	}
 	//
 }
+
+/*** syntax highlighting ***/
+
+void editorUpdateSyntax(erow *row) {
+	row->hl = realloc(row->hl, row->rsize); 	//because the highlights refer to every character in render, they are the same length
+	memset(row->hl, HL_NORMAL, row->rsize); 	//set all the values to be of NORMAL highlight
+	int i;
+	for (i = 0; i < row->rsize; i++) {
+		if (isdigit(row->render[i])) {
+			row->hl[i] = HL_NUMBER;
+		}
+	}
+}
+
 /*** row operations ***/
 int editorRowCxtoRx(erow *row, int cx) { 	//converts a character index into a render index
 	int rx = 0; 				//the row index
@@ -245,6 +265,8 @@ void editorUpdateRow(erow *row) {
 	}
 	row->render[idx] = '\0';
 	row->rsize = idx;
+
+	editorUpdateSyntax(row);
 }
 
 void editorInsertRow(int at, char *s, size_t len) {
@@ -259,6 +281,7 @@ void editorInsertRow(int at, char *s, size_t len) {
 	
 	E.row[at].rsize = 0;
 	E.row[at].render = NULL;
+	E.row[at].hl = NULL;
 	editorUpdateRow(&E.row[at]);
 
 	E.numrows++;
@@ -268,6 +291,7 @@ void editorInsertRow(int at, char *s, size_t len) {
 void editorFreeRow(erow *row) {
 	free(row->render);
 	free(row->chars);
+	free(row->hl);
 }
 
 void editorDelRow(int at) {
