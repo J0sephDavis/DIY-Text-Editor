@@ -210,15 +210,30 @@ int getWindowSize(int *rows, int *cols) {
 
 /*** syntax highlighting ***/
 
+int is_separator(int c) {
+	return isspace(c)
+		|| c == '\0'
+		|| strchr(",.()+-/*=~%<>[];",c) != NULL;
+}
+
 void editorUpdateSyntax(erow *row) {
 	row->hl = realloc(row->hl, row->rsize); 	//because the highlights refer to every character in render, they are the same length
 	memset(row->hl, HL_NORMAL, row->rsize); 	//set all the values to be of NORMAL highlight
+
+	int prev_sep = 1; 				//so that numbers at the beginning of the line are highlighted
+
 	int i=0;
 	while (i < row->size) { 			//while the index is less than the length of render
 		char c = row->render[i]; 		//the character at index i 
-		if (isdigit(c)) 			//if it is a digit
+		unsigned char prev_hl = (i>0) ? row->hl[i-1] : HL_NORMAL;
+		if (isdigit(c) &&  (prev_sep || prev_hl == HL_NUMBER)) { 	//if the character is a digit and (the previous char was a SEPARATOR or NUMBER)
 			row->hl[i] = HL_NUMBER; 	//set the highlight to a number
-		i++; 					//increase inde
+			i++; 				//increase index
+			prev_sep = 0; 			//set prev_sep flag to 0, since this was a number
+			continue;
+		}
+		prev_sep = is_separator(c); 		//if the character is a separator, set the prev_sep flag
+		i++; 					//increment index
 	}
 }
 
