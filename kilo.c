@@ -201,15 +201,27 @@ int getWindowSize(int *rows, int *cols) {
 	//
 }
 /*** row operations ***/
-int editorRowCxtoRx(erow *row, int cx) {
-	int rx = 0;
-	int j;
-	for (j = 0; j < cx; j++) {
-		if (row->chars[j] == '\t')
-			rx+=(KILO_TAB_STOP-1) - (rx % KILO_TAB_STOP);
-		rx++;
+int editorRowCxtoRx(erow *row, int cx) { 	//converts a character index into a render index
+	int rx = 0; 				//the row index
+	int j; 					//iterator 
+	for (j = 0; j < cx; j++) { 		//for each character in the character string
+		if (row->chars[j] == '\t') 	//if we come across a tab (the only thing rendered differently by our editor)
+			rx+=(KILO_TAB_STOP-1) - (rx % KILO_TAB_STOP); //add characters until we hit the TAB STOP
+		rx++; 				//increment rx
 	}
 	return rx;
+}
+
+int editorRowRxtoCx(erow *row, int rx) {
+	int cur_rx = 0; 			//our internal rx value
+	int cx; 				//the character index we will return later
+	for (cx = 0; cx < row->size; cx++) { 	//from character index 0 to the length of chars
+		if (row->chars[cx] == '\t') 	//if character is a TAB
+			cur_rx+=(KILO_TAB_STOP-1) - (cur_rx % KILO_TAB_STOP); //do the tab_stop math & increment cur_rx
+		cur_rx++; 			//increment cur_rx
+		if (cur_rx > rx) return cx; 	//if the current render index is greater than the rx argument, return CX
+	}
+	return cx; 				//return the character index, I believe this just the end of the row
 }
 
 void editorUpdateRow(erow *row) {
