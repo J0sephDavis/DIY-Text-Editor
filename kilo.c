@@ -374,6 +374,10 @@ void editorOpen(char* filename) {
 void editorSave() {
 	if (E.filename == NULL) { 				//no file to save to
 		E.filename = editorPrompt("Save as %s"); 	//prompt for a file-name
+		if (E.filename == NULL) {
+			editorSetStatusMessage("Save aborted");
+			return;
+		}
 	}
 
 	int len; 						//the length of the buffer
@@ -550,7 +554,12 @@ char *editorPrompt(char *prompt) { 				//displays a prompt in the status bar
 		editorRefreshScreen(); 				//redraw the screen
 
 		int c = editorReadKey(); 			//read a single byte from the user
-		if (c == '\r') { 				//IF ENTER
+		if (c == '\x1b') { 				//IF ESCAPE
+			editorSetStatusMessage(""); 		//clear the status message
+			free(buf); 				//free the buffer
+			return NULL; 				//RETURN NULL
+		}
+		else if (c == '\r') { 				//ELSE-IF ENTER
 			if (buflen != 0) { 			//IF the user has typed SOMETHING
 				editorSetStatusMessage(""); 	//clear the status message
 				return buf; 			//RETURN user-input
