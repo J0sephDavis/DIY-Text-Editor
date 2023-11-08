@@ -62,6 +62,7 @@ struct editorConfig { 				//global struct that will contain our editor state
 /*** prototypes ***/
 void editorSetStatusMessage(const char* fmt, ...);
 void editorRefreshScreen();
+char *editorPrompt(char *prompt);
 
 /*** terminal  ***/
 //prints error message & exits program
@@ -371,7 +372,9 @@ void editorOpen(char* filename) {
 }
 
 void editorSave() {
-	if (E.filename == NULL) return; //no file to save to
+	if (E.filename == NULL) { 				//no file to save to
+		E.filename = editorPrompt("Save as %s"); 	//prompt for a file-name
+	}
 
 	int len; 						//the length of the buffer
 	char *buf = editorRowsToString(&len); 			//pointer to the buffer
