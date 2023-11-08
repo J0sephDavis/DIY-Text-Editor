@@ -554,7 +554,10 @@ char *editorPrompt(char *prompt) { 				//displays a prompt in the status bar
 		editorRefreshScreen(); 				//redraw the screen
 
 		int c = editorReadKey(); 			//read a single byte from the user
-		if (c == '\x1b') { 				//IF ESCAPE
+		if (c == DEL_KEY || c == CTRL_KEY('h') || c == BACKSPACE) { //IF a delete key
+			if (buflen != 0) buf[--buflen] = '\0';
+		}
+		else if (c == '\x1b') { 			//ELSE-IF ESCAPE
 			editorSetStatusMessage(""); 		//clear the status message
 			free(buf); 				//free the buffer
 			return NULL; 				//RETURN NULL
