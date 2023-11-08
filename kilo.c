@@ -400,6 +400,25 @@ void editorSave() {
 	editorSetStatusMessage("Failed to save. I/O Error: %s", strerror(errno));
 }
 
+/*** find ***/
+
+void editorFind() {
+	char *query = editorPrompt("Search %s (ESC to cancel)");
+	if (query == NULL) return; 				//abort if user aborted
+
+	int i;
+	for (i = 0; i < E.numrows; i++) { 			//FOR-EACH row in the editor
+		erow *row = &E.row[i]; 				//set var to current row
+		char *match = strstr(row->render, query); 	//returns a pointer to the first occurence of the QUERY in the row
+		if (match) { 					//if the pointer is not NULL, meaning we have a match
+			E.cy = i; 				//set the cursor to the current row
+			E.cx = match - row->render; 		//set the cursor to the beginning of the match
+			E.row_off = E.numrows;  		//set row_offset to the bottom of the file so that the editorScroll will bring us to the matching line(top of screen)
+			break; 					//break to end the search
+		}
+	}
+}
+
 /*** append buffer ***/
 /* To reduce the amount of write() calls we make. Thus, reducing flicker & unexpected behavior */
 struct abuf { 		//the append buffer
