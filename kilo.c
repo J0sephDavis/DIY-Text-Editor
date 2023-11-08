@@ -414,9 +414,11 @@ void editorSave() {
 
 /*** find ***/
 
-void editorFind() {
-	char *query = editorPrompt("Search %s (ESC to cancel)", NULL);
-	if (query == NULL) return; 				//abort if user aborted
+//finds a string in the file
+void editorFindCallback(char* query, int key) {
+	if (key == '\r' || key == '\x1b') { 	//IF ESCAPE OR RETURN
+		return;
+	}
 
 	int i;
 	for (i = 0; i < E.numrows; i++) { 			//FOR-EACH row in the editor
@@ -429,6 +431,11 @@ void editorFind() {
 			break; 					//break to end the search
 		}
 	}
+}
+//editor find, calls callback
+void editorFind() {
+	char *query = editorPrompt("Search %s (ESC to cancel)", editorFindCallback);
+	if (query) free(query); 				//free the query, if it exists
 }
 
 /*** append buffer ***/
