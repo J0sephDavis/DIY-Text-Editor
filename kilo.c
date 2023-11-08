@@ -453,6 +453,14 @@ void editorFindCallback(char* query, int key) {
 	static int last_match = -1;
 	static int direction = 1;
 
+	static int saved_hl_line;
+	static char *saved_hl = NULL;
+	if (saved_hl) {
+		memcpy(E.row[saved_hl_line].hl, saved_hl, E.row[saved_hl_line].rsize);
+		free(saved_hl);
+		saved_hl = NULL;
+	}
+
 	if (key == '\r' || key == '\x1b') { 			//IF ESCAPE OR RETURN
 		last_match = -1; 				//reset last_match on exiting search
 		direction = 1; 					//reset direction on exiting search
@@ -480,6 +488,10 @@ void editorFindCallback(char* query, int key) {
 			E.cy = current; 			//set the cursor to the current row
 			E.cx = editorRowRxtoCx(row,match - row->render); 		//set the cursor to the beginning of the match
 			E.row_off = E.numrows;  		//set row_offset to the bottom of the file so that the editorScroll will bring us to the matching line(top of screen)
+
+			saved_hl_line = current;
+			saved_hl = malloc(row->size);
+			memcpy(saved_hl, row->hl, row->rsize);
 			memset(&row->hl[match - row->render], HL_MATCH, strlen(query)); //highlight the match
 			break; 					//break to end the search
 		}
