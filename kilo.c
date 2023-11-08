@@ -40,6 +40,7 @@ enum editorKey {
 enum editorHighlight {
 	HL_NORMAL 	= 0,
 	HL_NUMBER 	,
+	HL_MATCH 	,
 };
 /*** data ***/
 //an Editor ROW, dynamically stores a line of text
@@ -222,7 +223,8 @@ void editorUpdateSyntax(erow *row) {
 
 int editorSyntaxToColor(int hl) {
 	switch(hl) { 	//does not need to handle HL_NORMAL, this is handled elsewhere
-		case HL_NUMBER: return 31; 	//foreground red
+		case HL_NUMBER:	return 31; 	//foreground red
+		case HL_MATCH: 	return 34; 	
 		default: return 37; 		//foreground white
 	}
 }
@@ -478,6 +480,7 @@ void editorFindCallback(char* query, int key) {
 			E.cy = current; 			//set the cursor to the current row
 			E.cx = editorRowRxtoCx(row,match - row->render); 		//set the cursor to the beginning of the match
 			E.row_off = E.numrows;  		//set row_offset to the bottom of the file so that the editorScroll will bring us to the matching line(top of screen)
+			memset(&row->hl[match - row->render], HL_MATCH, strlen(query)); //highlight the match
 			break; 					//break to end the search
 		}
 	}
