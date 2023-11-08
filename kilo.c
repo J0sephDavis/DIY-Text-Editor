@@ -416,16 +416,34 @@ void editorSave() {
 
 //finds a string in the file
 void editorFindCallback(char* query, int key) {
-	if (key == '\r' || key == '\x1b') { 	//IF ESCAPE OR RETURN
-		return;
-	}
+	static int last_match = -1;
+	static int direction = 1;
 
+	if (key == '\r' || key == '\x1b') { 			//IF ESCAPE OR RETURN
+		last_match = -1; 				//reset last_match on exiting search
+		direction = 1; 					//reset direction on exiting search
+		return;
+	} else if (key == ARROW_RIGHT || key == ARROW_DOWN) {
+		direction = 1;
+	} else if (key == ARROW_LEFT || key == ARROW_UP) {
+		direction = -1;
+	} else {
+		direction = 1;
+		last_match = -1;
+	}
+	if (last_match == -1) direction = 1;
+	int current = last_match; 				//index of the current row we are searching
 	int i;
 	for (i = 0; i < E.numrows; i++) { 			//FOR-EACH row in the editor
-		erow *row = &E.row[i]; 				//set var to current row
+		current += direction; 				//decrement if we are searching backwards, increment if we are moving forwards
+		if (current == -1) current = E.numrows - 1; 	//if the current match was moved to before the file, wrap around to the end of the file
+		else if (current == E.numrows) current = 0; 	//IF the current match is at the end of the file, move to the beginning of the file
+
+		erow *row = &E.row[current]; 			//set var to current row
 		char *match = strstr(row->render, query); 	//returns a pointer to the first occurence of the QUERY in the row
 		if (match) { 					//if the pointer is not NULL, meaning we have a match
-			E.cy = i; 				//set the cursor to the current row
+			last_match = current; 			//update the last_match to be the current match
+			E.cy = current; 			//set the cursor to the current row
 			E.cx = editorRowRxtoCx(row,match - row->render); 		//set the cursor to the beginning of the match
 			E.row_off = E.numrows;  		//set row_offset to the bottom of the file so that the editorScroll will bring us to the matching line(top of screen)
 			break; 					//break to end the search
@@ -440,7 +458,7 @@ void editorFind() {
 	int saved_coloff = E.col_off;
 	int saved_rowoff = E.row_off;
 
-	char *query = editorPrompt("Search %s (ESC to cancel)", editorFindCallback);
+	char *query = editorPrompt("Search %s (ESC to cancel/ARROWS to navigate/Enter to find)", editorFindCallback);
 	if (query) free(query); 				//free the query, if it exists
 	else {
 		//restore context
