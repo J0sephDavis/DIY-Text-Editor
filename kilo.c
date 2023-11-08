@@ -61,6 +61,7 @@ struct editorConfig { 				//global struct that will contain our editor state
 } E;
 /*** prototypes ***/
 void editorSetStatusMessage(const char* fmt, ...);
+void editorRefreshScreen();
 
 /*** terminal  ***/
 //prints error message & exits program
@@ -534,6 +535,36 @@ void editorSetStatusMessage(const char *fmt, ...) {
 }
 
 /*** input ***/
+char *editorPrompt(char *prompt) { 				//displays a prompt in the status bar
+	size_t bufsize = 128;
+	char *buf = malloc(bufsize); 				//stores user-input
+
+	size_t buflen = 0; 					//no text, length is 0
+	buf[0] = '\0'; 						//set the null-byte to the end-of-string
+
+	while(1) {
+		editorSetStatusMessage(prompt, buf); 		//update status message as user is typing
+		editorRefreshScreen(); 				//redraw the screen
+
+		int c = editorReadKey(); 			//read a single byte from the user
+		if (c == '\r') { 				//IF ENTER
+			if (buflen != 0) { 			//IF the user has typed SOMETHING
+				editorSetStatusMessage(""); 	//clear the status message
+				return buf; 			//RETURN user-input
+			}
+		}
+		else if (!iscntrl(c) && c < 128) { 		//ELSE-IF ASCII CHARACTER
+			if (buflen == bufsize - 1) { 		//IF the user has used all available charaters
+				bufsize *= 2; 			//inrease the buffer size
+				buf = realloc(buf, bufsize); 	//reallocte the buffer with the new buffer size
+			}
+			buf[buflen++]  = c; 			//add the input to the string
+			buf[buflen] = '\0'; 			//terminate string with null-byte
+		}
+		
+	}
+}
+
 void editorMoveCursor(int key) {
 	erow *row = (E.cy >= E.numrows) ? NULL : &E.row[E.cy];
 
