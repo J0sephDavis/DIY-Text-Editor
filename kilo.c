@@ -39,11 +39,13 @@ enum editorKey {
 
 enum editorHighlight {
 	HL_NORMAL 	= 0,
+	HL_STRING 	,
 	HL_NUMBER 	,
 	HL_MATCH 	,
 };
 
 #define HL_HIGHLIGHT_NUMBERS (1<<0)
+#define HL_HIGHLIGHT_STRINGS (1<<1)
 /*** data ***/
 struct editorSyntax {
 	char *filetype;
@@ -86,7 +88,7 @@ struct editorSyntax HLDB[] = {
 	{
 		"c",
 		C_HL_EXTENSIONS,
-		HL_HIGHLIGHT_NUMBERS
+		HL_HIGHLIGHT_NUMBERS | HL_HIGHLIGHT_STRINGS
 	},
 };
 #define HLDB_ENTRIES (sizeof(HLDB) / sizeof(HLDB[0]))
@@ -242,12 +244,34 @@ void editorUpdateSyntax(erow *row) {
 
 	if (E.syntax == NULL) return; 			//if no syntax highlighting is set, exit
 	int prev_sep = 1; 				//so that numbers at the beginning of the line are highlighted
+	int in_string = 0; 				//keep track if we are in a string or not. stores the value of a double/single-quote depending on how the string was declared
 
 	int i=0;
 	while (i < row->rsize) { 			//while the index is less than the length of render
 		char c = row->render[i]; 		//the character at index i 
 		unsigned char prev_hl = (i>0) ? row->hl[i-1] : HL_NORMAL;
 
+		if (E.syntax->flags & HL_HIGHLIGHT_STRINGS) { 	//highlight strings enabled
+			if (in_string) { 				//if we are in a string
+				row->hl[i] = HL_STRING; 		//highlight as string
+				if(c == '\\' && i + 1 < row->rsize) {
+					row->hl[i+1] = HL_STRING;
+					i += 2;
+					continue;
+				}
+				if (c== in_string) in_string = 0; 	//if the current character is the end-quote, in_string = false
+				i++; 					//increment
+				prev_sep = 1; 				//consider the final quote a separator
+				continue; 				//skip
+			} else { 					//if we are NOT in a string
+				if (c == '"' || c == '\'') { 		//see if the character is a quote
+					in_string = c; 			//set the in_string to the quote's value
+					row->hl[i] = HL_STRING; 	//highliht as string
+					i++; 				//increment
+					continue; 			//skip
+				}
+			}
+		}
 		if (E.syntax->flags & HL_HIGHLIGHT_NUMBERS) { 	//if number highlighting is enabled
 			if ((isdigit(c) &&  (prev_sep || prev_hl == HL_NUMBER)) //if the character is a digit and (the previous char was a SEPARATOR or highlighted as a NUMBER)
 				|| (c == '.' && prev_hl == HL_NUMBER)) { 	//if the character is a decimal, and previous value is highlighted as a number
@@ -259,13 +283,13 @@ void editorUpdateSyntax(erow *row) {
 		}
 
 		prev_sep = is_separator(c); 		//if the character is a separator, set the prev_sep flag
-							//ISSUE: "0.0.1" results in highlight of 0.1, because . is a separator.
 		i++; 					//increment index
 	}
 }
 
 int editorSyntaxToColor(int hl) {
 	switch(hl) { 	//does not need to handle HL_NORMAL, this is handled elsewhere
+		case HL_STRING:	return 35; 	//magenta
 		case HL_NUMBER:	return 31; 	//foreground red
 		case HL_MATCH: 	return 34; 	
 		default: return 37; 		//foreground white
