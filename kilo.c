@@ -40,6 +40,7 @@ enum editorKey {
 enum editorHighlight {
 	HL_NORMAL 	= 0,
 	HL_COMMENT 	,
+	HL_MLCOMMENT 	,
 	HL_KEYWORD1 	,
 	HL_KEYWORD2 	,
 	HL_STRING 	,
@@ -55,6 +56,8 @@ struct editorSyntax {
 	char **filematch; 		//array of strings to match the filename against
 	char **keywords;
 	char *singleline_comment_start;	//contains the string that a singeline comment starts with
+	char *multiline_comment_start;
+	char *multiline_comment_end;
 	int flags; 			//bit flags to determine whether we highlight numbers or strings for the filetype
 };
 //an Editor ROW, dynamically stores a line of text
@@ -100,7 +103,7 @@ struct editorSyntax HLDB[] = {
 		"c",
 		C_HL_EXTENSIONS,
 		C_HL_KEYWORDS,
-		"//",
+		"//", "/*", "*/",
 		HL_HIGHLIGHT_NUMBERS | HL_HIGHLIGHT_STRINGS
 	},
 };
@@ -257,25 +260,54 @@ void editorUpdateSyntax(erow *row) {
 
 	if (E.syntax == NULL) return; 			//if no syntax highlighting is set, exit
 
-	char **keywords = E.syntax->keywords;
+	char **keywords = E.syntax->keywords; 		//the array of keywords
 	
-	char *scs = E.syntax->singleline_comment_start;
-	int scs_len = scs ? strlen(scs) : 0;
+	char *scs = E.syntax->singleline_comment_start;	//the singleline comment start symbol
+	char *mcs = E.syntax->multiline_comment_start; 	//the mlc start symbol
+	char *mce = E.syntax->multiline_comment_end; 	//the mlc end symbol
+
+	int scs_len = scs ? strlen(scs) : 0; 		//length of the single-line comment marker
+	int mcs_len = mcs ? strlen(mcs) : 0; 		//len of multi-line comment starter
+	int mce_len = mce ? strlen(mce) : 0; 		//len of mlc end
 
 	int prev_sep = 1; 				//so that numbers at the beginning of the line are highlighted
 	int in_string = 0; 				//keep track if we are in a string or not. stores the value of a double/single-quote depending on how the string was declared
+	int in_comment = 0; 				//keeps track if we are in a multi-line comment
 
 	int i=0;
 	while (i < row->rsize) { 			//while the index is less than the length of render
 		char c = row->render[i]; 		//the character at index i 
 		unsigned char prev_hl = (i>0) ? row->hl[i-1] : HL_NORMAL;
 
-		if (scs_len && !in_string) {
+		if (scs_len && !in_string && !in_comment) {
 			if (!strncmp(&row->render[i],scs,scs_len)) {
 				memset(&row->hl[i],HL_COMMENT, row->rsize-i);
 				break;
 			}
 		}
+
+		if (mcs_len && mce_len && !in_string) { 		//if mcs_len & mce_len are not null, and we are not in a string
+			if (in_comment) { 				//if we are already in the comment
+				row->hl[i] = HL_MLCOMMENT;
+				if (!strncmp(&row->render[i], mce, mce_len)) { 	//if the current index is the end of the multi-line comment
+					memset(&row->hl[i], HL_MLCOMMENT, mce_len); 	//highlight as a comment
+					i += mce_len; 				//increment index
+					in_comment = 0; 			//exit the comment
+					prev_sep = 1; 				//mark as a separator
+					continue; 				//skip
+				} else { 					//if the current index is just part of the comment
+					i++; 					//increment index
+					continue; 				//skip
+				}
+			}
+			else if (!strncmp(&row->render[i], mcs, mcs_len)) { 	//if the current index is the beginning of the comment
+				memset(&row->hl[i], HL_MLCOMMENT, mcs_len); 	//highlight the symbol
+				i += mcs_len; 					//increment the index
+				in_comment = 1; 				//flag that we are in a comment
+				continue; 					//skip
+			}
+		}
+
 		if (E.syntax->flags & HL_HIGHLIGHT_STRINGS) { 	//highlight strings enabled
 			if (in_string) { 				//if we are in a string
 				row->hl[i] = HL_STRING; 		//highlight as string
@@ -332,6 +364,7 @@ void editorUpdateSyntax(erow *row) {
 
 int editorSyntaxToColor(int hl) {
 	switch(hl) { 	//does not need to handle HL_NORMAL, this is handled elsewhere
+		case HL_MLCOMMENT:
 		case HL_COMMENT:	return 36; 	//cyan
 		case HL_KEYWORD1:	return 33; 	//yellow
 		case HL_KEYWORD2:	return 32; 	//green
