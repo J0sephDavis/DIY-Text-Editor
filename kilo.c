@@ -42,7 +42,14 @@ enum editorHighlight {
 	HL_NUMBER 	,
 	HL_MATCH 	,
 };
+
+#define HL_HIGHLIGHT_NUMBERS (1<<0)
 /*** data ***/
+struct editorSyntax {
+	char *filetype;
+	char **filematch; 	//array of strings to match the filename against
+	int flags; 		//bit flags to determine whether we highlight numbers or strings for the filetype
+};
 //an Editor ROW, dynamically stores a line of text
 typedef struct erow {
 	int size;
@@ -60,16 +67,29 @@ struct editorConfig { 				//global struct that will contain our editor state
 	int screencols; 			//count of columns on screen
 	int numrows; 				//the number of rows
 	erow *row; 				//array of rows
-	int dirty;
+	int dirty; 				//measure of how modified a file is. 0 = unadultered, >0 indictates # of changes
 	char* filename; 			//the name of the file
-	char statusmsg[80];
-	time_t statusmsg_time;
+	char statusmsg[80]; 			//the status message to display
+	time_t statusmsg_time; 			//
+	struct editorSyntax *syntax; 		//pointer to the current syntax
 	struct termios original_termios; 	//the original state of the user's termio
 } E;
 /*** prototypes ***/
 void editorSetStatusMessage(const char* fmt, ...);
 void editorRefreshScreen();
 char *editorPrompt(char *prompt, void (*callback)(char *,int));
+
+/*** filetypes  ***/
+
+char *C_HL_EXTENSIONS[] = { ".c", ".h", ".cpp", NULL };
+struct editorSyntax HLDB[] = {
+	{
+		"c",
+		C_HL_EXTENSIONS,
+		HL_HIGHLIGHT_NUMBERS
+	},
+};
+#define HLDB_ENTRIES (sizeof(HLDB) / sizeof(HLDB[0]))
 
 /*** terminal  ***/
 //prints error message & exits program
@@ -220,20 +240,26 @@ void editorUpdateSyntax(erow *row) {
 	row->hl = realloc(row->hl, row->rsize); 	//because the highlights refer to every character in render, they are the same length
 	memset(row->hl, HL_NORMAL, row->rsize); 	//set all the values to be of NORMAL highlight
 
+	if (E.syntax == NULL) return; 			//if no syntax highlighting is set, exit
 	int prev_sep = 1; 				//so that numbers at the beginning of the line are highlighted
 
 	int i=0;
-	while (i < row->size) { 			//while the index is less than the length of render
+	while (i < row->rsize) { 			//while the index is less than the length of render
 		char c = row->render[i]; 		//the character at index i 
 		unsigned char prev_hl = (i>0) ? row->hl[i-1] : HL_NORMAL;
-		if ((isdigit(c) &&  (prev_sep || prev_hl == HL_NUMBER)) //if the character is a digit and (the previous char was a SEPARATOR or highlighted as a NUMBER)
-			|| (c == '.' && prev_hl == HL_NUMBER)) { 	//if the character is a decimal, and previous value is highlighted as a number
-			row->hl[i] = HL_NUMBER; 	//set the highlight to a number
-			i++; 				//increase index
-			prev_sep = 0; 			//set prev_sep flag to 0, since this was a number
-			continue;
+
+		if (E.syntax->flags & HL_HIGHLIGHT_NUMBERS) { 	//if number highlighting is enabled
+			if ((isdigit(c) &&  (prev_sep || prev_hl == HL_NUMBER)) //if the character is a digit and (the previous char was a SEPARATOR or highlighted as a NUMBER)
+				|| (c == '.' && prev_hl == HL_NUMBER)) { 	//if the character is a decimal, and previous value is highlighted as a number
+				row->hl[i] = HL_NUMBER; 	//set the highlight to a number
+				i++; 				//increase index
+				prev_sep = 0; 			//set prev_sep flag to 0, since this was a number
+				continue;
+			}
 		}
+
 		prev_sep = is_separator(c); 		//if the character is a separator, set the prev_sep flag
+							//ISSUE: "0.0.1" results in highlight of 0.1, because . is a separator.
 		i++; 					//increment index
 	}
 }
@@ -246,6 +272,29 @@ int editorSyntaxToColor(int hl) {
 	}
 }
 
+void editorSelectSyntaxHighlight() {
+	E.syntax = NULL;
+	if (E.filename == NULL) return;
+
+	char *ext = strchr(E.filename, '.');
+	for (unsigned int j = 0; j < HLDB_ENTRIES; j++) { 		//loop through each highlight DB entry
+		struct editorSyntax *s = &HLDB[j];
+		unsigned int i = 0;
+		while (s->filematch[i]) { 				//loop through each HLDB's filematch entries
+			int is_ext = (s->filematch[i][0] == '.');
+			if ((is_ext && ext && !strcmp(ext, s->filematch[i]))
+					|| (!is_ext && strstr(E.filename, s->filematch[i]))) {
+				E.syntax = s;
+				int filerow;
+				for(filerow=0; filerow<E.numrows;filerow++){
+					editorUpdateSyntax(&E.row[filerow]);
+				}
+				return;
+			}
+			i++;
+		}
+	}
+}
 
 /*** row operations ***/
 int editorRowCxtoRx(erow *row, int cx) { 	//converts a character index into a render index
@@ -417,6 +466,9 @@ char *editorRowsToString(int *buflen) {
 void editorOpen(char* filename) {
 	free(E.filename);
 	E.filename = strdup(filename);
+
+	editorSelectSyntaxHighlight();
+
 	FILE *fp = fopen(filename, "r");
 	if (!fp) die("fopen");
 
@@ -441,6 +493,7 @@ void editorSave() {
 			editorSetStatusMessage("Save aborted");
 			return;
 		}
+		editorSelectSyntaxHighlight();
 	}
 
 	int len; 						//the length of the buffer
@@ -583,7 +636,8 @@ void editorDrawStatusBar(struct abuf *ab) {
 			E.filename ? E.filename : "[No Name]",
 			E.numrows,
 			E.dirty ? "(modified)" : "");
-	int rlen = snprintf(rstatus, sizeof(rstatus), "%d/%d", E.cy + 1, E.numrows);
+	int rlen = snprintf(rstatus, sizeof(rstatus), "%s | %d/%d",
+			E.syntax ? E.syntax->filetype : "no ft",E.cy + 1, E.numrows);
 	if (len > E.screencols) len = E.screencols;
 	abAppend(ab, status, len);
 	while (len < E.screencols) {
@@ -868,6 +922,7 @@ void initEditor() {
 	if (getWindowSize(&E.screenrows, &E.screencols) == -1)
 		die("getWindowSize");
 	E.screenrows-=2;
+	E.syntax = NULL;
 }
 
 int main(int argc, char* argv[]) {
