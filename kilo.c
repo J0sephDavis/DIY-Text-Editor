@@ -40,6 +40,8 @@ enum editorKey {
 enum editorHighlight {
 	HL_NORMAL 	= 0,
 	HL_COMMENT 	,
+	HL_KEYWORD1 	,
+	HL_KEYWORD2 	,
 	HL_STRING 	,
 	HL_NUMBER 	,
 	HL_MATCH 	,
@@ -51,7 +53,8 @@ enum editorHighlight {
 struct editorSyntax {
 	char *filetype;
 	char **filematch; 		//array of strings to match the filename against
-	char *singleline_comment_start;	//
+	char **keywords;
+	char *singleline_comment_start;	//contains the string that a singeline comment starts with
 	int flags; 			//bit flags to determine whether we highlight numbers or strings for the filetype
 };
 //an Editor ROW, dynamically stores a line of text
@@ -86,10 +89,17 @@ char *editorPrompt(char *prompt, void (*callback)(char *,int));
 /*** filetypes  ***/
 
 char *C_HL_EXTENSIONS[] = { ".c", ".h", ".cpp", NULL };
+char *C_HL_KEYWORDS[] = {"switch", "if", "while", "for", "break",
+			"continue", "return", "else", "struct", "union",
+			"typedef", "static", "enum", "class", "case",
+			//terminating with a '|', to indicate that the are secondary keywords
+			"int|", "long|", "double|", "float|", "char|", "unsigned|", "signed|", "void|",
+NULL};
 struct editorSyntax HLDB[] = {
 	{
 		"c",
 		C_HL_EXTENSIONS,
+		C_HL_KEYWORDS,
 		"//",
 		HL_HIGHLIGHT_NUMBERS | HL_HIGHLIGHT_STRINGS
 	},
@@ -246,6 +256,8 @@ void editorUpdateSyntax(erow *row) {
 	memset(row->hl, HL_NORMAL, row->rsize); 	//set all the values to be of NORMAL highlight
 
 	if (E.syntax == NULL) return; 			//if no syntax highlighting is set, exit
+
+	char **keywords = E.syntax->keywords;
 	
 	char *scs = E.syntax->singleline_comment_start;
 	int scs_len = scs ? strlen(scs) : 0;
@@ -295,6 +307,24 @@ void editorUpdateSyntax(erow *row) {
 			}
 		}
 
+		if (prev_sep) { 							//keyword must be preceded by a separator
+			int j; 								//iterator
+			for (j = 0; keywords[j]; j++) { 				//FOR-EACH keyword
+				int klen = strlen(keywords[j]); 			//the LENGTH of the current keyword
+				int kw2 = keywords[j][klen-1] == '|'; 			//FLAG, if the keyword is a secondary keyword (ends with a pipe->|) 
+				if (kw2) klen--; 					//don't include the pipe
+				if (!strncmp(&row->render[i], keywords[j], klen) &&  	//IF there is a keyword at the current index
+						is_separator(row->render[i + klen])) { 	//AND if there is a separator following the keyword
+					memset(&row->hl[i], kw2 ? HL_KEYWORD2 : HL_KEYWORD1, klen); 	//highlight the row
+					i += klen; 					//increment the index
+					break; 						//break
+				}
+			}
+			if (keywords[j] == NULL) { 			//if there are no keywords left
+				prev_sep = 0; 				//set sep to 0
+				continue; 				//skip
+			}
+		}
 		prev_sep = is_separator(c); 		//if the character is a separator, set the prev_sep flag
 		i++; 					//increment index
 	}
@@ -303,6 +333,8 @@ void editorUpdateSyntax(erow *row) {
 int editorSyntaxToColor(int hl) {
 	switch(hl) { 	//does not need to handle HL_NORMAL, this is handled elsewhere
 		case HL_COMMENT:	return 36; 	//cyan
+		case HL_KEYWORD1:	return 33; 	//yellow
+		case HL_KEYWORD2:	return 32; 	//green
 		case HL_STRING:		return 35; 	//magenta
 		case HL_NUMBER:		return 31; 	//foreground red
 		case HL_MATCH: 		return 34; 	
