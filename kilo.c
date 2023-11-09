@@ -39,6 +39,7 @@ enum editorKey {
 
 enum editorHighlight {
 	HL_NORMAL 	= 0,
+	HL_COMMENT 	,
 	HL_STRING 	,
 	HL_NUMBER 	,
 	HL_MATCH 	,
@@ -49,8 +50,9 @@ enum editorHighlight {
 /*** data ***/
 struct editorSyntax {
 	char *filetype;
-	char **filematch; 	//array of strings to match the filename against
-	int flags; 		//bit flags to determine whether we highlight numbers or strings for the filetype
+	char **filematch; 		//array of strings to match the filename against
+	char *singleline_comment_start;	//
+	int flags; 			//bit flags to determine whether we highlight numbers or strings for the filetype
 };
 //an Editor ROW, dynamically stores a line of text
 typedef struct erow {
@@ -88,6 +90,7 @@ struct editorSyntax HLDB[] = {
 	{
 		"c",
 		C_HL_EXTENSIONS,
+		"//",
 		HL_HIGHLIGHT_NUMBERS | HL_HIGHLIGHT_STRINGS
 	},
 };
@@ -243,6 +246,10 @@ void editorUpdateSyntax(erow *row) {
 	memset(row->hl, HL_NORMAL, row->rsize); 	//set all the values to be of NORMAL highlight
 
 	if (E.syntax == NULL) return; 			//if no syntax highlighting is set, exit
+	
+	char *scs = E.syntax->singleline_comment_start;
+	int scs_len = scs ? strlen(scs) : 0;
+
 	int prev_sep = 1; 				//so that numbers at the beginning of the line are highlighted
 	int in_string = 0; 				//keep track if we are in a string or not. stores the value of a double/single-quote depending on how the string was declared
 
@@ -251,6 +258,12 @@ void editorUpdateSyntax(erow *row) {
 		char c = row->render[i]; 		//the character at index i 
 		unsigned char prev_hl = (i>0) ? row->hl[i-1] : HL_NORMAL;
 
+		if (scs_len && !in_string) {
+			if (!strncmp(&row->render[i],scs,scs_len)) {
+				memset(&row->hl[i],HL_COMMENT, row->rsize-i);
+				break;
+			}
+		}
 		if (E.syntax->flags & HL_HIGHLIGHT_STRINGS) { 	//highlight strings enabled
 			if (in_string) { 				//if we are in a string
 				row->hl[i] = HL_STRING; 		//highlight as string
@@ -289,10 +302,11 @@ void editorUpdateSyntax(erow *row) {
 
 int editorSyntaxToColor(int hl) {
 	switch(hl) { 	//does not need to handle HL_NORMAL, this is handled elsewhere
-		case HL_STRING:	return 35; 	//magenta
-		case HL_NUMBER:	return 31; 	//foreground red
-		case HL_MATCH: 	return 34; 	
-		default: return 37; 		//foreground white
+		case HL_COMMENT:	return 36; 	//cyan
+		case HL_STRING:		return 35; 	//magenta
+		case HL_NUMBER:		return 31; 	//foreground red
+		case HL_MATCH: 		return 34; 	
+		default: 		return 37; 	//foreground white
 	}
 }
 
