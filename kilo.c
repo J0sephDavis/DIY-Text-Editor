@@ -762,23 +762,35 @@ void editorDrawRows(struct abuf *ab) {
 			unsigned char *hl = &E.row[filerow].hl[E.col_off]; 	//the current highlight
 			int current_color = -1;
 			int j;
-			for (j = 0; j < len; j++) { 				//for each character in the visible segment of the row
-				if (hl[j] == HL_NORMAL) { 			//if of normal highlight
+			for (j = 0; j < len; j++) { 					//for each character in the visible segment of the row
+				if (iscntrl(c[j])) { 					//IF character IS control character
+					char sym = (c[j] < 26) ? '@' + c[j] : '?'; 	//convert the control character to a symbol from A-Z (1-26) & @ (0), else '?'
+					abAppend(ab, "\x1b[7m",4); 			//invert color
+					abAppend(ab, &sym,1); 				//print the symbol
+					abAppend(ab, "\x1b[m",3); 			//reset the color
+					if (current_color != -1) { 			//if a color is set
+						char buf[16];
+						int clen = snprintf(buf, sizeof(buf),"\x1b[%dm", current_color);
+						abAppend(ab, buf, clen);
+					}
+
+				}
+				else if (hl[j] == HL_NORMAL) { 				//if of normal highlight
 					if (current_color != -1) {
 						abAppend(ab, "\x1b[39m",5); 		//set color to normal
 						current_color = -1;
 					}
-					abAppend(ab, &c[j],1); 			//print character
+					abAppend(ab, &c[j],1); 				//print character
 				}
 				else {
-					int color = editorSyntaxToColor(hl[j]);	//get the color for the syntax
+					int color = editorSyntaxToColor(hl[j]);		//get the color for the syntax
 					if (color != current_color) {
 						current_color = color;
 						char buf[16];
 						int clen = snprintf(buf, sizeof(buf), "\x1b[%dm",color);
 						abAppend(ab, buf, clen);
 					}
-					abAppend(ab, &c[j], 1); 		//print character
+					abAppend(ab, &c[j], 1); 			//print character
 				}
 			}
 			abAppend(ab, "\x1b[39m",5); //set color to normal
