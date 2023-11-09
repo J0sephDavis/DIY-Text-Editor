@@ -62,10 +62,12 @@ struct editorSyntax {
 };
 //an Editor ROW, dynamically stores a line of text
 typedef struct erow {
-	int size;
-	int rsize;
-	char *chars;
-	char *render;
+	int idx;  		//index within file
+	int size; 		//size of char string
+	int rsize; 		//size of render string
+	char *chars; 		//contains the raw file contents
+	char *render; 		//contains our render version that will be displayed
+	int hl_open_comment;
 	unsigned char *hl; //indicates whether a character, in RENDER, is part of a string, comment, number, &c.
 } erow;
 struct editorConfig { 				//global struct that will contain our editor state
@@ -272,7 +274,7 @@ void editorUpdateSyntax(erow *row) {
 
 	int prev_sep = 1; 				//so that numbers at the beginning of the line are highlighted
 	int in_string = 0; 				//keep track if we are in a string or not. stores the value of a double/single-quote depending on how the string was declared
-	int in_comment = 0; 				//keeps track if we are in a multi-line comment
+	int in_comment = (row->idx > 0 && E.row[row->idx - 1].hl_open_comment); //keeps track if we are in a multi-line comment
 
 	int i=0;
 	while (i < row->rsize) { 			//while the index is less than the length of render
@@ -359,6 +361,11 @@ void editorUpdateSyntax(erow *row) {
 		}
 		prev_sep = is_separator(c); 		//if the character is a separator, set the prev_sep flag
 		i++; 					//increment index
+	}
+	int changed = (row->hl_open_comment != in_comment); //if the comment highlight of a row is going to change
+	row->hl_open_comment = in_comment; 		//set highlight to whatever the comment status is
+	if (changed && row->idx + 1 < E.numrows) { 	//if the highlight did change, and we're not at the end of the file
+		editorUpdateSyntax(&E.row[row->idx+1]); 	//update the next row's syntax
 	}
 }
 
@@ -452,6 +459,9 @@ void editorInsertRow(int at, char *s, size_t len) {
 	if (at < 0 || at > E.numrows) return;
 	E.row = realloc(E.row, sizeof(erow) * (E.numrows + 1)); //reallocate the array
 	memmove(&E.row[at+1], &E.row[at], sizeof(erow) * (E.numrows - at));
+	for (int j = at + 1; j <= E.numrows; j++) E.row[j].idx++;
+
+	E.row[at].idx = at; //index of the row
 	
 	E.row[at].size = len;
 	E.row[at].chars = malloc(len + 1);
@@ -461,6 +471,7 @@ void editorInsertRow(int at, char *s, size_t len) {
 	E.row[at].rsize = 0;
 	E.row[at].render = NULL;
 	E.row[at].hl = NULL;
+	E.row[at].hl_open_comment = 0;
 	editorUpdateRow(&E.row[at]);
 
 	E.numrows++;
@@ -477,6 +488,7 @@ void editorDelRow(int at) {
 	if (at < 0 || at >= E.numrows) return;
 	editorFreeRow(&E.row[at]);
 	memmove(&E.row[at], &E.row[at+1], sizeof(erow) * (E.numrows - at - 1));
+	for (int j = at; j < E.numrows - 1; j++) E.row[j].idx--;
 	E.numrows--;
 	E.dirty++;
 
